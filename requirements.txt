@@ -1,0 +1,6 @@
+azure-ai-documentintelligence
+openai
+python-dotenv
+requests
+azure-core
+PyMuPDF
