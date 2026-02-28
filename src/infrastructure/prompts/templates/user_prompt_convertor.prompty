@@ -1,0 +1,22 @@
+---
+name: WorkflowExtractionArabic
+description: Agent spécialisé dans l'extraction de workflows BPMN / Mermaid en JSON depuis des diagrammes en arabe
+authors:
+  - Amaidi Chaima
+model:
+  api: chat
+  configuration:
+    type: azure_openai
+tags:
+  - agent
+  - workflow
+  - bpmn
+  - mermaid
+  - arabic
+version: 1.0.0
+---
+user:
+Convert the following Arabic flowchart into JSON following the system rules:
+
+--- MERMAID INPUT ---
+{mermaid_text}

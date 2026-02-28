@@ -4,3 +4,5 @@ python-dotenv
 requests
 azure-core
 PyMuPDF
+pydantic
+fastapi
