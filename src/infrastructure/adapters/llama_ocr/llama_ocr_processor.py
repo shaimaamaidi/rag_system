@@ -10,9 +10,9 @@ class LlamaOcrAdapter(LlamaOcrPort):
         self.client = LlamaApiClient()
         self.parser = LlamaOcrParser()
 
-    def process(self, image_path: str) -> OcrResult:
-        job_id = self.client.upload_image(image_path)
-        data = self.client.wait_for_completion(job_id)
+    async def process(self, image_path: str) -> OcrResult:
+        job_id = await self.client.upload_image(image_path)
+        data = await self.client.wait_for_completion(job_id)
         raw_md = self.parser.extract_text_from_response(data)
 
         if not raw_md:

@@ -5,7 +5,7 @@ the process to the DocumentIngestionService.
 """
 
 from src.domain.ports.input.ingest_documents_port import IngestDocumentsPort
-from src.domain.service.ingestion_pipeline_service import DocumentIngestionService
+from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
 
 
 class IngestDocumentUseCase(IngestDocumentsPort):

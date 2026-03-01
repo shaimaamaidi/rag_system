@@ -1,5 +1,7 @@
 from typing import List, Tuple, Set
 
+from pathlib import Path
+
 from src.domain.exceptions.document_loader_exception import DocumentLoaderException
 from src.domain.models.page_content_model import PageContent
 from src.domain.models.section_heading_model import SectionHeading
@@ -11,7 +13,9 @@ from src.infrastructure.adapters.document_loader.text_extractor import TextExtra
 
 
 class DocumentLoader(DocumentLoaderPort):
+
     """Orchestration principale pour le chargement et traitement d'un document."""
+    SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 
     def __init__(self, prompt_provider: PromptProviderPort):
         self._client = AzureDocumentClient()
@@ -24,6 +28,18 @@ class DocumentLoader(DocumentLoaderPort):
     def load(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
         if not file_path:
             raise DocumentLoaderException("Le chemin du fichier ne peut pas être vide.")
+
+        ext = Path(file_path).suffix.lower()
+        if ext not in self.SUPPORTED_EXTENSIONS:
+            raise DocumentLoaderException(
+                message=f"Unsupported file type '{ext}'. "
+                        f"Supported formats: {', '.join(self.SUPPORTED_EXTENSIONS)}"
+            )
+
+        if not Path(file_path).exists():
+            raise DocumentLoaderException(
+                message=f"File not found: {file_path}"
+            )
 
         az_result = self._client.analyze_file(file_path)
 

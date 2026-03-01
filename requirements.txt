@@ -6,3 +6,9 @@ azure-core
 PyMuPDF
 pydantic
 fastapi
+pyyaml
+jinja2
+azure-ai-projects
+azure-identity
+openpyxl
+pandas

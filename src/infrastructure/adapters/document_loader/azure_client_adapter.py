@@ -4,6 +4,7 @@ from azure.ai.documentintelligence.models import DocumentAnalysisFeature
 from azure.core.credentials import AzureKeyCredential
 from dotenv import load_dotenv
 
+from src.domain.exceptions.azure_document_analysis_exception import AzureDocumentAnalysisException
 from src.domain.exceptions.azure_document_config_exception import AzureDocumentConfigException
 
 

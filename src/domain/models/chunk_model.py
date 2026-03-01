@@ -9,6 +9,7 @@ class Chunk:
     paragraph_id: str
     title: Optional[str]
     sub_title: Optional[str]
+    target_group: str
     chunk_text: str
     original_text: str
     has_table: bool

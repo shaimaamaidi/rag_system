@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from src.domain.service.document_chunking import Chunk
+from src.domain.services.document_chunking import Chunk
 
 class VectorStorePort(ABC):
 

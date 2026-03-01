@@ -110,6 +110,13 @@ class AzureSearchClient:
                     filterable=True,
                 ),
                 SearchField(
+                    name="target_group",
+                    type=SearchFieldDataType.String,
+                    searchable=True,
+                    filterable=True,
+                    sortable=True,
+                ),
+                SearchField(
                     name="chunk_text",
                     type=SearchFieldDataType.String,
                     searchable=True,
@@ -222,6 +229,7 @@ class AzureSearchClient:
             "paragraph_id":  chunk.paragraph_id,
             "title":         chunk.title or "",
             "sub_title":     chunk.sub_title or "",
+            "target_group":  chunk.target_group or "",
             "chunk_text":    chunk.chunk_text,
             "original_text": chunk.original_text,
             "embedding":     chunk.embedding,

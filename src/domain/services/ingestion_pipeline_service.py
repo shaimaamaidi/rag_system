@@ -1,6 +1,6 @@
 """
 Module containing the DocumentIngestionService class.
-This service is responsible for ingesting documents by loading, preprocessing,
+This services is responsible for ingesting documents by loading, preprocessing,
 chunking, generating embeddings, and storing chunks in a vector store.
 """
 
@@ -17,8 +17,8 @@ from src.domain.ports.input.document_loader_port import DocumentLoaderPort
 from src.domain.ports.input.ingest_documents_port import IngestDocumentsPort
 from src.domain.ports.output.embedding_port import EmbeddingPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
-from src.domain.service.document_chunking import SmartChunker
-from src.domain.service.document_splitter import DocumentSplitter
+from src.domain.services.document_chunking import SmartChunker
+from src.domain.services.document_splitter import DocumentSplitter
 
 
 
@@ -41,7 +41,7 @@ class DocumentIngestionService(IngestDocumentsPort):
         vector_store: VectorStorePort
     ):
         """
-        Initialize the ingestion service with the required components.
+        Initialize the ingestion services with the required components.
 
         Args:
             loader (LoaderPort): Component responsible for loading documents.

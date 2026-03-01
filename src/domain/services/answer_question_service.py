@@ -1,6 +1,6 @@
 """
 Module containing the RAGService class.
-Provides a service to answer questions using a Retrieval-Augmented Generation (RAG) pipeline.
+Provides a services to answer questions using a Retrieval-Augmented Generation (RAG) pipeline.
 """
 from typing import List
 
@@ -16,9 +16,9 @@ from src.domain.ports.output.vector_store_port import VectorStorePort
 
 class AnswerQuestionService(AskQuestionPort):
     """
-    Business service to answer questions using a Retrieval-Augmented Generation (RAG) approach.
+    Business services to answer questions using a Retrieval-Augmented Generation (RAG) approach.
 
-    This service uses:
+    This services uses:
     - An embedding model to convert questions into vector representations.
     - A vector store to retrieve relevant chunks of information.
     - An answer generator to produce answers based on the retrieved context.
@@ -32,7 +32,7 @@ class AnswerQuestionService(AskQuestionPort):
 
     ):
         """
-        Initialize the RAG service with the required components.
+        Initialize the RAG services with the required components.
 
         Args:
             embedding_model (EmbeddingPort): Component to generate embeddings for questions.
@@ -87,6 +87,7 @@ class AnswerQuestionService(AskQuestionPort):
     def _get_context_from_chunks(chunks: List[Chunk]) -> str:
         context_list = []
         seen_paragraphs = set()
+
         for chunk in chunks:
             if chunk.paragraph_id not in seen_paragraphs:
                 header_parts = []
@@ -96,9 +97,11 @@ class AnswerQuestionService(AskQuestionPort):
                     header_parts.append(chunk.sub_title)
 
                 header = " | ".join(header_parts) if header_parts else ""
+
                 entry = f"[{chunk.doc_name}]"
                 if header:
                     entry += f" {header}"
+                entry += f"\ntarget group(s): {chunk.target_group or 'N/A'}"
                 entry += f"\n{chunk.original_text}"
 
                 context_list.append(entry)

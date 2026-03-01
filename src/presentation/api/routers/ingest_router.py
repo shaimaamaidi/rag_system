@@ -34,7 +34,7 @@ async def ingest_document(
         )
 
     try:
-        use_case.execute(file_bytes=file_bytes, filename=file.filename)
+        use_case.ingest(file_bytes=file_bytes, filename=file.filename)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

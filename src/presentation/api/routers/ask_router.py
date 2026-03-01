@@ -1,5 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+from src.domain.exceptions.azure_agent_run_exception import AzureAgentRunException
+from src.domain.exceptions.question_empty_exception import QuestionEmptyException
 
 router = APIRouter(prefix="/ask", tags=["Question Answering"])
 
@@ -15,41 +19,40 @@ class AskRequest(BaseModel):
     )
 
 
-class AskResponse(BaseModel):
-    answer: str
-
-
 # ── Dependency ────────────────────────────────────────────────────────────────
 
-def get_ask_use_case(request: Request):
-    return request.app.state.container.ask_use_case
+def get_agent(request: Request):
+    return request.app.state.container.agent_adapter
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post(
     "/",
-    response_model=AskResponse,
     status_code=status.HTTP_200_OK,
     summary="Ask a question",
-    description="Submit a question to the RAG pipeline.",
+    description="Submit a question to the Azure AI Agent. Returns a streaming response (SSE).",
 )
 async def ask_question(
     body: AskRequest,
-    use_case=Depends(get_ask_use_case),
-) -> AskResponse:
+    agent=Depends(get_agent),
+) -> StreamingResponse:
+
     if not body.question.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Question cannot be empty or whitespace.",
+        raise QuestionEmptyException(
+            message="Question cannot be empty or whitespace"
         )
 
-    try:
-        answer = use_case.execute(question=body.question)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"RAG pipeline failed: {str(e)}",
-        )
+    def stream_generator():
+        try:
+            for chunk in agent.ask_question_stream(question=body.question):
+                yield chunk
+        except Exception as e:
+            raise AzureAgentRunException(
+                message=f"Agent streaming failed: {str(e)}"
+            ) from e
 
-    return AskResponse(answer=answer)
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+    )

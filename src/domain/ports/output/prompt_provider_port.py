@@ -40,3 +40,6 @@ class PromptProviderPort(ABC):
             str: Le prompt utilisateur formaté
         """
         pass
+    @abstractmethod
+    def get_agent_instructions(self) -> str:
+        pass

@@ -9,7 +9,7 @@ from typing import List
 from src.domain.ports.output.vector_store_port import VectorStorePort
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
 from src.infrastructure.persistence.azure_search_repository import AzureSearchRepository
-from src.domain.service.document_chunking import Chunk
+from src.domain.services.document_chunking import Chunk
 
 
 class AzureAISearchAdapter(VectorStorePort):
@@ -25,7 +25,7 @@ class AzureAISearchAdapter(VectorStorePort):
         Initialize the AzureAISearchAdapter.
 
         Args:
-            client (AzureSearchClient): An Azure Search client used to interact with the search service.
+            client (AzureSearchClient): An Azure Search client used to interact with the search services.
 
         Notes:
             - Initializes an internal repository that handles low-level Azure Search operations.

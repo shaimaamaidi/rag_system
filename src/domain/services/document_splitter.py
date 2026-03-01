@@ -22,7 +22,7 @@ RULES APPLIED:
 """
 from typing import Any, Optional
 
-from src.domain.service.document_helpers import count_lines, count_sentences, normalize_heading, is_article_page, is_workflow_page, \
+from src.domain.services.document_helpers import count_lines, count_sentences, normalize_heading, is_article_page, is_workflow_page, \
     remove_preface_line, workflow_title, extract_preface_heading, page_table_metadata, is_title_page
 from src.domain.factories.paragraph_factory import ParagraphFactory
 from src.domain.models.page_content_model import PageContent

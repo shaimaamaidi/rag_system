@@ -1,8 +1,11 @@
 import uuid
 from typing import List
 
+from pathlib import Path
+
 from src.domain.models.chunk_model import Chunk
 from src.domain.models.paragraph_model import Paragraph
+from src.domain.services.document_category_extractor import DocumentCategoryExtractor
 
 
 class SmartChunker:
@@ -34,11 +37,12 @@ class SmartChunker:
 
     SMALL_PARA_TOLERANCE: int = 30
 
-    def __init__(self, max_chunk: int = 3000, overlap: int = 200):
+    def __init__(self, max_chunk: int = 3000, overlap: int = 200, extractor_category: DocumentCategoryExtractor = None):
         if overlap >= max_chunk:
             raise ValueError("overlap must be strictly less than max_chunk")
         self.max_chunk = max_chunk
         self.overlap = overlap
+        self.extractor_category = extractor_category
 
     # ── public entry point ────────────────────
 
@@ -154,8 +158,14 @@ class SmartChunker:
 
     # ── factory ───────────────────────────────
 
-    @staticmethod
-    def _make_chunk(para: Paragraph, para_id: str, text: str) -> Chunk:
+    def _make_chunk(self, para: Paragraph, para_id: str, text: str) -> Chunk:
+        category = None
+        if self.extractor_category:
+            categories = self.extractor_category.extract_categories()
+            # name_doc peut avoir extension → on essaie avec et sans
+            doc_key = Path(para.name_doc).stem if para.name_doc else ""
+            category = categories.get(para.name_doc) or categories.get(doc_key)
+
         return Chunk(
             id=str(uuid.uuid4()),
             doc_name=para.name_doc,
@@ -166,5 +176,6 @@ class SmartChunker:
             original_text=para.text,
             embedding=None,
             has_table=para.has_table,
-            table_metadata=para.table_metadata.copy()
+            table_metadata=para.table_metadata.copy(),
+            target_group=category,
         )

@@ -47,5 +47,3 @@ tmp_images/
 data/
 data_test/
 
-# Entry points
-main*.py
