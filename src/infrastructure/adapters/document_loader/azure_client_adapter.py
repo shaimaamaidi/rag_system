@@ -1,3 +1,5 @@
+"""Azure Document Intelligence client adapter."""
+
 import os
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import DocumentAnalysisFeature
@@ -14,9 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class AzureDocumentClient:
-    """Wrapper Azure Document Intelligence."""
+    """Wrapper for Azure Document Intelligence client operations."""
 
     def __init__(self):
+        """Initialize the Document Intelligence client.
+
+        :raises AzureDocumentConfigException: If required env vars are missing.
+        """
         load_dotenv()
         endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
         key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
@@ -41,6 +47,13 @@ class AzureDocumentClient:
             ) from e
 
     def analyze_file(self, file_path: str, pdf_style: bool = True):
+        """Analyze a document file using Azure Document Intelligence.
+
+        :param file_path: Path to the input file.
+        :param pdf_style: Whether to include style extraction features.
+        :return: Document analysis result.
+        :raises AzureDocumentAnalysisException: If analysis fails.
+        """
         logger.info("Analyzing file with Azure Document Intelligence: %s", file_path)
         try:
             with open(file_path, "rb") as f:

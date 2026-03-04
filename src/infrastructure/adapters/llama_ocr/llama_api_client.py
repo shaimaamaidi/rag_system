@@ -1,3 +1,5 @@
+"""Async client for Llama Cloud OCR operations."""
+
 import json
 import os
 import asyncio
@@ -16,9 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 class LlamaApiClient:
-    """Gestion asynchrone de la communication HTTP avec Llama Cloud."""
+    """Wrapper for Llama Cloud OCR API calls."""
 
     def __init__(self):
+        """Initialize the client using environment configuration.
+
+        :raises LlamaConfigException: If required credentials are missing.
+        """
         load_dotenv()
         self._api_key = os.getenv("LLAMA_CLOUD_API_KEY")
         self._base_url = os.getenv("LLAMA_CLOUD_ENDPOINT")
@@ -34,11 +40,13 @@ class LlamaApiClient:
         self._headers = {"Authorization": f"Bearer {self._api_key}"}
         logger.info("LlamaApiClient initialized with endpoint: %s", self._base_url)
 
-
-    # ================================
-    # Upload Image (ASYNC)
-    # ================================
     async def upload_image(self, image_path: str) -> str:
+        """Upload an image and start an OCR job.
+
+        :param image_path: Path to the image file.
+        :return: Job identifier from Llama Cloud.
+        :raises LlamaUploadException: If the image is missing or upload fails.
+        """
         logger.info("Uploading image: %s", image_path)
 
         if not os.path.exists(image_path):
@@ -74,9 +82,10 @@ class LlamaApiClient:
                         data={"configuration": json.dumps(configuration)},
                     )
 
-                job_id = response.raise_for_status()
+                response.raise_for_status()
+                job_id = response.json()["id"]
                 logger.info("Image uploaded successfully, job_id=%s", job_id)
-                return response.json()["id"]
+                return job_id
 
         except Exception as e:
             logger.error("Failed to upload image %s: %s", image_path, e)
@@ -85,18 +94,23 @@ class LlamaApiClient:
                 code="LLAMA_UPLOAD_ERROR",
                 http_status=502
             ) from e
+    async def wait_for_completion(
+        self, job_id: str, max_retries: int = 20, sleep_seconds: int = 3
+    ) -> dict:
+        """Poll a job until it completes, fails, or times out.
 
-    # ================================
-    # Wait For Completion (ASYNC)
-    # ================================
-    async def wait_for_completion(self, job_id: str, max_retries: int = 3,  sleep_seconds: int = 3) -> dict:
+        :param job_id: OCR job identifier.
+        :param max_retries: Maximum poll attempts.
+        :param sleep_seconds: Delay between poll attempts.
+        :return: OCR result payload from Llama Cloud.
+        :raises LlamaPollingException: If polling fails or times out.
+        :raises LlamaJobFailedException: If the job reports failure.
+        """
         logger.info("Polling Llama job: %s", job_id)
 
         url = f"{self._base_url}/parse/{job_id}"
-        retries = 0
-
         async with httpx.AsyncClient(timeout=60.0) as client:
-            while retries < max_retries:
+            for _ in range(max_retries):
                 try:
                     response = await client.get(
                         url,
@@ -128,12 +142,12 @@ class LlamaApiClient:
                         code="LLAMA_JOB_FAILED_ERROR",
                         http_status=502
                     )
-                retries += 1
+
                 await asyncio.sleep(sleep_seconds)
 
-            logger.error("Llama job polling timed out: %s", job_id)
-            raise LlamaPollingException(
-                message=f"Llama job {job_id} polling timed out after {max_retries * sleep_seconds} seconds",
-                code="LLAMA_POLLING_TIMEOUT",
-                http_status=504
-            )
+        logger.error("Llama job polling timed out: %s", job_id)
+        raise LlamaPollingException(
+            message=f"Llama job {job_id} polling timed out after {max_retries * sleep_seconds} seconds",
+            code="LLAMA_POLLING_TIMEOUT",
+            http_status=504
+        )

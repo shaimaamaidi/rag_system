@@ -1,3 +1,5 @@
+"""Azure OpenAI answer generation adapter."""
+
 import logging
 import os
 from dotenv import load_dotenv
@@ -15,8 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 class AzureOpenAIAnswerGenerator(AnswerGeneratorPort):
+    """Generate answers using Azure OpenAI chat completions."""
 
     def __init__(self, prompt_provider: PromptProviderPort):
+        """Initialize the generator from environment configuration.
+
+        :param prompt_provider: Provider for system and user prompts.
+        :raises AzureOpenAIConfigException: If required env vars are missing.
+        """
         load_dotenv()
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -39,6 +47,13 @@ class AzureOpenAIAnswerGenerator(AnswerGeneratorPort):
         logger.info("AzureOpenAIAnswerGenerator initialized successfully")
 
     def generate_answer(self, context, question) -> str:
+        """Generate an answer from context and question.
+
+        :param context: Retrieved context string.
+        :param question: User question string.
+        :return: Generated answer text.
+        :raises AzureOpenAIAnswerException: If the generation call fails.
+        """
         logger.info("Generating answer for a new question")
         try:
             messages = [

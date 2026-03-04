@@ -1,9 +1,25 @@
+"""Chunk model definitions for vector store ingestion."""
+
 from dataclasses import dataclass, field
 from typing import Optional, List, Any
 
 
 @dataclass
 class Chunk:
+    """Chunk of text with metadata for retrieval.
+
+    :ivar id: Unique chunk identifier.
+    :ivar doc_name: Source document name.
+    :ivar paragraph_id: Parent paragraph identifier.
+    :ivar title: Section title if available.
+    :ivar sub_title: Subsection title if available.
+    :ivar target_group: Target group or category label.
+    :ivar chunk_text: Text content for the chunk.
+    :ivar original_text: Original paragraph text.
+    :ivar has_table: Whether the chunk includes table data.
+    :ivar table_metadata: Table metadata extracted from the chunk.
+    :ivar embedding: Optional embedding vector.
+    """
     id: str
     doc_name: str
     paragraph_id: str

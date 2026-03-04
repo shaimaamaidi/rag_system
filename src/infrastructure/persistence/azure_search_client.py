@@ -1,3 +1,5 @@
+"""Azure Cognitive Search client wrapper and index management."""
+
 import logging
 import os
 from dotenv import load_dotenv
@@ -27,19 +29,19 @@ logger = logging.getLogger(__name__)
 
 
 class AzureSearchClient:
-    """
-    Wrapper for Azure Cognitive Search client.
+    """Wrapper for Azure Cognitive Search clients and index creation.
 
-    Index schema matches the Chunk dataclass produced by SmartChunker.
-
-    Environment variables required:
-        - AZURE_AI_SEARCH_ENDPOINT
-        - AZURE_AI_SEARCH_INDEX_NAME
-        - AZURE_AI_SEARCH_API_KEY
-        - AZURE_EMBEDDING_DIMENSIONS  (optional, default: 3072)
+    :ivar endpoint: Azure Search endpoint URL.
+    :ivar index_name: Search index name.
+    :ivar api_key: Azure Search API key.
+    :ivar embedding_dimensions: Expected embedding vector dimensions.
     """
 
     def __init__(self):
+        """Initialize the search client from environment variables.
+
+        :raises AzureSearchConfigException: If required env vars are missing.
+        """
         load_dotenv()
         self.endpoint   = os.getenv("AZURE_AI_SEARCH_ENDPOINT")
         self.index_name = os.getenv("AZURE_AI_SEARCH_INDEX_NAME")
@@ -61,30 +63,15 @@ class AzureSearchClient:
         )
         logger.info("AzureSearchClient initialized.")
 
-    # ──────────────────────────────────────────
-    # Index creation
-    # ──────────────────────────────────────────
-
     def create_index(self) -> SearchIndex:
-        """
-        Create or update the Azure Cognitive Search index.
+        """Create or update the Azure Cognitive Search index.
 
-        Fields (aligned with Chunk dataclass):
-            - chunk_id     → Chunk.id            (key, filterable)
-            - doc_name     → Chunk.doc_name       (filterable, sortable)
-            - paragraph_id → Chunk.paragraph_id   (filterable, sortable)
-            - title        → Chunk.title           (searchable, filterable)
-            - sub_title    → Chunk.sub_title       (searchable, filterable, semantic keywords)
-            - chunk_text   → Chunk.chunk_text      (searchable, semantic content)
-            - original_text→ Chunk.original_text   (searchable)
-            - has_table    → Chunk.has_table        (filterable)
-            - table_metadata→Chunk.table_metadata  (searchable)
-            - embedding    → Chunk.embedding        (vector, HNSW)
+        :return: Created or updated search index.
+        :raises AzureSearchIndexException: If index creation fails.
         """
         try:
             logger.info("Creating/updating Azure Search index.")
             fields = [
-                # ── identifiers ──────────────────────────────────────────────
                 SimpleField(
                     name="chunk_id",
                     type=SearchFieldDataType.String,
@@ -104,7 +91,6 @@ class AzureSearchClient:
                     sortable=True,
                 ),
 
-                # ── textual content ──────────────────────────────────────────
                 SearchField(
                     name="title",
                     type=SearchFieldDataType.String,
@@ -136,7 +122,6 @@ class AzureSearchClient:
                     filterable=False,
                 ),
 
-                # ── metadata ─────────────────────────────────────────────────
                 SimpleField(
                     name="has_table",
                     type=SearchFieldDataType.Boolean,
@@ -149,7 +134,6 @@ class AzureSearchClient:
                     filterable=False,
                 ),
 
-                # ── vector embedding ─────────────────────────────────────────
                 SearchField(
                     name="embedding",
                     type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -159,7 +143,6 @@ class AzureSearchClient:
                 ),
             ]
 
-            # ── vector search (HNSW) ─────────────────────────────────────────
             vector_search = VectorSearch(
                 algorithms=[
                     HnswAlgorithmConfiguration(name="hnsw_algo"),
@@ -172,8 +155,6 @@ class AzureSearchClient:
                 ],
             )
 
-            # ── semantic search ──────────────────────────────────────────────
-            # Priority: chunk_text (content) > sub_title > title (keywords)
             semantic_search = SemanticSearch(
                 configurations=[
                     SemanticConfiguration(
@@ -207,12 +188,11 @@ class AzureSearchClient:
             raise AzureSearchIndexException(
                 message=f"Failed to create or update Azure Search index '{self.index_name}': {str(e)}",
             ) from e
-    # ──────────────────────────────────────────
-    # Helpers
-    # ──────────────────────────────────────────
-
     def get_search_client(self) -> SearchClient:
-        """Return a SearchClient ready to query the index."""
+        """Return a search client bound to the configured index.
+
+        :return: Search client instance.
+        """
         return SearchClient(
             endpoint=self.endpoint,
             index_name=self.index_name,
@@ -221,18 +201,10 @@ class AzureSearchClient:
 
     @staticmethod
     def chunk_to_document(chunk) -> dict:
-        """
-        Convert a Chunk dataclass instance into an Azure Search document dict.
+        """Convert a chunk object into an Azure Search document dict.
 
-        Args:
-            chunk (Chunk): A Chunk produced by SmartChunker.
-
-        Returns:
-            dict: Ready-to-upload document for Azure Search.
-
-        Usage:
-            docs = [AzureSearchClient.chunk_to_document(c) for c in chunks]
-            search_client.upload_documents(docs)
+        :param chunk: Chunk produced by the chunker.
+        :return: Document ready for upload.
         """
         return {
             "chunk_id":      chunk.id,

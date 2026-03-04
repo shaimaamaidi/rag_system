@@ -1,9 +1,4 @@
-"""
-Module: fastapi_exception_handler
-Description:
-    Centralized exception handling for FastAPI.
-    Handles AppException, validation errors, and generic unhandled exceptions.
-"""
+"""FastAPI exception handlers for domain and validation errors."""
 import logging
 
 from fastapi import Request
@@ -17,7 +12,6 @@ setup_logger()
 logger = logging.getLogger(__name__)
 
 
-# HTTP status codes that indicate config/infra errors (always 5xx)
 _CONFIG_CODES = {
     "AZURE_CONFIG_ERROR",
     "AZURE_DOC_CONFIG_ERROR",
@@ -31,20 +25,15 @@ _CONFIG_CODES = {
 
 
 class FastAPIExceptionHandler:
-    """
-    Centralized exception handler for FastAPI.
-
-    Provides static methods to handle:
-        - AppException (all custom domain/infra exceptions)
-        - RequestValidationError (FastAPI input validation)
-        - Exception (unhandled generic errors)
-    """
+    """Centralized exception handling for FastAPI."""
 
     @staticmethod
     async def handle_app_exception(request: Request, exc: AppException) -> JSONResponse:
-        """
-        Handles all AppException subclasses.
-        Uses exc.http_status directly — set per exception class.
+        """Handle :class:`AppException` errors.
+
+        :param request: Incoming FastAPI request.
+        :param exc: Application exception instance.
+        :return: JSON error response.
         """
         if exc.code in _CONFIG_CODES:
             logger.error("Configuration/Infrastructure Error [%s]: %s", exc.code, exc.message, exc_info=exc)
@@ -62,8 +51,11 @@ class FastAPIExceptionHandler:
 
     @staticmethod
     async def handle_validation_exception(request: Request, exc: RequestValidationError) -> JSONResponse:
-        """
-        Handles FastAPI request validation errors (422).
+        """Handle FastAPI request validation errors.
+
+        :param request: Incoming FastAPI request.
+        :param exc: Validation exception instance.
+        :return: JSON error response.
         """
         logger.info("Validation Error on request %s: %s", request.url.path, exc.errors())
         return JSONResponse(
@@ -79,8 +71,11 @@ class FastAPIExceptionHandler:
 
     @staticmethod
     async def handle_generic_exception(request: Request, exc: Exception) -> JSONResponse:
-        """
-        Handles all unhandled exceptions (500).
+        """Handle unhandled exceptions.
+
+        :param request: Incoming FastAPI request.
+        :param exc: Unhandled exception instance.
+        :return: JSON error response.
         """
         logger.error("Unhandled exception on request %s: %s", request.url.path, str(exc), exc_info=exc)
         return JSONResponse(

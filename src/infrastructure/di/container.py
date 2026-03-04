@@ -1,3 +1,5 @@
+"""Dependency injection container for wiring application components."""
+
 import logging
 
 from src.application.use_cases.answer_question_pipeline import AskQuestionUseCase
@@ -21,8 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class Container:
+    """Construct and hold configured adapters, services, and use cases."""
 
     def __init__(self):
+        """Initialize and wire all application components."""
         logger.info("Initializing Container...")
 
         self.prompt_provider = PromptyLoader()
@@ -40,6 +44,10 @@ class Container:
 
 
     def _initialize_adapters(self) -> None:
+        """Create and configure infrastructure adapters.
+
+        :return: None.
+        """
         self.document_loader = DocumentLoader(prompt_provider=self.prompt_provider)
         logger.info("Document loader initialized")
 
@@ -65,6 +73,10 @@ class Container:
 
 
     def _initialize_services(self) -> None:
+        """Create domain services.
+
+        :return: None.
+        """
         self.ingestion_service = DocumentIngestionService(
             loader=self.document_loader,
             chunker=self.chunker,
@@ -81,6 +93,10 @@ class Container:
         logger.info("Answer question service initialized")
 
     def _initialize_use_cases(self) -> None:
+        """Create application use cases.
+
+        :return: None.
+        """
         self.ingest_use_case = IngestDocumentUseCase(self.ingestion_service)
         logger.info("Ingest document use case initialized")
 
@@ -88,10 +104,18 @@ class Container:
         logger.info("Ask question use case initialized")
 
     def _initialize_tools(self) -> None:
+        """Create tool adapters used by the agent.
+
+        :return: None.
+        """
         self.search_tool = create_search_tool(self.ask_use_case)
         logger.info("Search tool initialized")
 
     def __repr__(self) -> str:
+        """Return a concise summary of the container contents.
+
+        :return: Debug-friendly string representation.
+        """
         return (
             f"<Container(\n"
             f"  adapters=5,\n"

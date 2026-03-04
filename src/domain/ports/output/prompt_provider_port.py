@@ -1,45 +1,43 @@
+"""Output port interface for prompt loading and formatting."""
+
 from abc import ABC, abstractmethod
 
 
 class PromptProviderPort(ABC):
-    """Port pour le chargement des prompts."""
+    """Interface for loading and formatting prompts."""
 
     @abstractmethod
     def get_system_prompt(self, prompt_type: str) -> str:
-        """
-        Récupère un prompt système.
+        """Return a system prompt by type.
 
-        Args:
-            prompt_type: Type de prompt système (answer, classifier, etc.)
-
-        Returns:
-            str: Le prompt système
+        :param prompt_type: Prompt type key (answer, classifier, etc.).
+        :return: System prompt text.
         """
         pass
 
     @abstractmethod
     def get_user_generator_prompt(self, context: str, question: str) -> str:
-        """
-        Récupère et formate le prompt utilisateur.
+        """Return a user prompt for answer generation.
 
-        Args:
-            context: Contexte pour répondre à la question
-            question: Question de l'utilisateur
-
-        Returns:
-            str: Le prompt utilisateur formaté
+        :param context: Context used to answer the question.
+        :param question: User question.
+        :return: Formatted user prompt.
         """
         pass
 
     @abstractmethod
     def get_user_convertor_prompt(self, mermaid_text: str) -> str:
-        """
-        Récupère et formate le prompt utilisateur.
+        """Return a user prompt for workflow conversion.
 
-        Returns:
-            str: Le prompt utilisateur formaté
+        :param mermaid_text: Mermaid flowchart text.
+        :return: Formatted user prompt.
         """
         pass
+
     @abstractmethod
     def get_agent_instructions(self) -> str:
+        """Return system instructions for the agent.
+
+        :return: Instruction text for agent behavior.
+        """
         pass

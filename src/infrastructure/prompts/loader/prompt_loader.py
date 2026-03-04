@@ -1,3 +1,5 @@
+"""Prompt loader for .prompty templates."""
+
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -13,9 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class PromptyLoader(PromptProviderPort):
-    """Implémentation du chargeur de fichiers .prompty."""
+    """Load and render .prompty templates."""
 
     def __init__(self, templates_dir: Optional[str] = None):
+        """Initialize the loader.
+
+        :param templates_dir: Optional path to templates directory.
+        :raises ValueError: If the templates directory does not exist.
+        """
         if templates_dir is None:
             current_dir = Path(__file__).parent.parent
             self.templates_dir = current_dir / "templates"
@@ -28,6 +35,12 @@ class PromptyLoader(PromptProviderPort):
 
     @staticmethod
     def _parse_prompty_file(file_path: Path) -> Dict[str, Any]:
+        """Parse a .prompty file into metadata and content.
+
+        :param file_path: Path to the .prompty file.
+        :return: Parsed metadata and content mapping.
+        :raises ValueError: If the file format is invalid.
+        """
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
@@ -44,6 +57,14 @@ class PromptyLoader(PromptProviderPort):
         }
 
     def _load_prompt(self, prompt_name: str, **kwargs: Any) -> str:
+        """Load and render a prompt template.
+
+        :param prompt_name: Template name without extension.
+        :param kwargs: Template variables for rendering.
+        :return: Rendered prompt content.
+        :raises FileNotFoundError: If the template does not exist.
+        :raises ValueError: If required inputs are missing.
+        """
         file_path = self.templates_dir / f"{prompt_name}.prompty"
 
         if not file_path.exists():
@@ -81,10 +102,21 @@ class PromptyLoader(PromptProviderPort):
         return template.render(**kwargs)
 
     def get_system_prompt(self, prompt_type: str) -> str:
+        """Return a system prompt by type.
+
+        :param prompt_type: Prompt type key.
+        :return: System prompt content.
+        """
         prompt_name = f"system_prompt_{prompt_type}"
         return self._load_prompt(prompt_name)
 
     def get_user_generator_prompt(self, context: str, question: str) -> str:
+        """Return a user prompt for answer generation.
+
+        :param context: Retrieved context.
+        :param question: User question.
+        :return: User prompt content.
+        """
         return self._load_prompt(
             "user_prompt_answer_generator",
             context=context,
@@ -92,10 +124,19 @@ class PromptyLoader(PromptProviderPort):
         )
 
     def get_user_convertor_prompt(self, mermaid_text: str) -> str:
+        """Return a user prompt for workflow conversion.
+
+        :param mermaid_text: Mermaid flowchart text.
+        :return: User prompt content.
+        """
         return self._load_prompt(
             "user_prompt_convertor",
             mermaid_text=mermaid_text,
         )
 
     def get_agent_instructions(self) -> str:
+        """Return instructions for the agent.
+
+        :return: Agent instruction content.
+        """
         return self._load_prompt("agent_instructions")

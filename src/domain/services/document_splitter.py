@@ -1,3 +1,5 @@
+"""Split document pages into structured paragraphs."""
+
 import logging
 from typing import Any, Optional
 
@@ -18,9 +20,17 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentSplitter:
+    """Build paragraph objects from page content and headings."""
 
     @staticmethod
     def split(name_doc, pages, headings) -> list[Paragraph]:
+        """Split pages into paragraphs.
+
+        :param name_doc: Document name used for paragraph metadata.
+        :param pages: Page content list.
+        :param headings: Section heading list.
+        :return: List of paragraph objects.
+        """
         logger.info(
             "Starting DocumentSplitter for '%s' with %d pages and %d headings",
             name_doc,
@@ -37,6 +47,13 @@ class DocumentSplitter:
         headings: list[SectionHeading],
         name_doc: str,
     ) -> list[Paragraph]:
+        """Build paragraph objects from pages and headings.
+
+        :param pages: Page content list.
+        :param headings: Section heading list.
+        :param name_doc: Document name used for paragraph metadata.
+        :return: List of paragraph objects.
+        """
 
         headings_by_page: dict[int, list[SectionHeading]] = {}
         for h in headings:
@@ -65,9 +82,8 @@ class DocumentSplitter:
             logger.error("Failed to build events for document '%s': %s", name_doc, e)
             return paragraphs
 
-        # ── closures ──────────────────────────────────────────────────────
-
         def _flush_pending_title():
+            """Flush pending title state and finalize current paragraph."""
             nonlocal active_title, pending_title
             if pending_title is not None:
                 if pending_headings:
@@ -80,12 +96,22 @@ class DocumentSplitter:
                 pending_title = None
 
         def has_enough_content_in_pending(is_article: bool = False) -> bool:
+            """Return True if pending content is sufficient to create a paragraph.
+
+            :param is_article: Whether the content represents an article.
+            :return: True when pending content is sufficient.
+            """
             if is_article or pending_is_article:
                 return True
             combined = "\n".join(pending_text_parts)
             return count_lines(combined) >= 1
 
         def is_weak_heading(is_article: bool = False) -> bool:
+            """Determine whether a pending heading is too weak to split.
+
+            :param is_article: Whether the content represents an article.
+            :return: True when the heading is considered weak.
+            """
             if is_article or pending_is_article:
                 return False
             is_first = (current_heading is None and not current_text_parts)
@@ -95,6 +121,7 @@ class DocumentSplitter:
             return count_sentences(combined) <= 2
 
         def flush_pending_into_current():
+            """Merge pending buffers into the current paragraph state."""
             nonlocal current_text_parts, current_has_table, current_is_article, pending_is_article
             for ph in pending_headings:
                 current_text_parts.append(ph)
@@ -108,6 +135,7 @@ class DocumentSplitter:
             pending_is_article = False
 
         def finalize_current():
+            """Finalize and store the current paragraph when it has content."""
             nonlocal current_heading, current_text_parts, current_has_table
             nonlocal current_table_metadata, current_is_article
 
@@ -141,6 +169,11 @@ class DocumentSplitter:
             current_text_parts.clear()
 
         def commit_pending_as_new(is_article: bool = False):
+            """Commit pending buffers as a new paragraph.
+
+            :param is_article: Whether the content represents an article.
+            :return: None.
+            """
             nonlocal current_heading, current_text_parts, current_has_table
             nonlocal current_table_metadata, current_is_article, pending_is_article
 
@@ -165,8 +198,6 @@ class DocumentSplitter:
             pending_text_parts.clear()
             pending_table_metadata.clear()
             pending_is_article = False
-
-        # ── state machine ─────────────────────────────────────────────────
 
         for event_type, payload in events:
 
@@ -242,8 +273,6 @@ class DocumentSplitter:
                     table_metadata = table_metadata,
                 ))
 
-        # ── end of events ─────────────────────────────────────────────────
-
         if pending_title is not None:
             active_title  = pending_title
             pending_title = None
@@ -263,6 +292,12 @@ class DocumentSplitter:
         pages: list[PageContent],
         headings_by_page,
     ) -> list[tuple[str, Any]]:
+        """Build event tuples used by the paragraph state machine.
+
+        :param pages: Page content list.
+        :param headings_by_page: Mapping of page numbers to headings.
+        :return: Sequence of event tuples for parsing.
+        """
         events: list[tuple[str, Any]] = []
 
         all_heading_pages = sorted(headings_by_page.keys())

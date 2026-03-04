@@ -1,8 +1,4 @@
-"""
-Module containing the DocumentIngestionService class.
-This service is responsible for ingesting documents by loading, preprocessing,
-chunking, generating embeddings, and storing chunks in a vector store.
-"""
+"""Domain service for ingesting documents into the vector store."""
 import logging
 from typing import List
 from pathlib import Path
@@ -25,13 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentIngestionService(IngestDocumentsPort):
-    """
-    Service responsible for ingesting documents through the full pipeline:
-    1. Load documents from a source.
-    2. Preprocess/clean documents.
-    3. Split documents into semantic chunks.
-    4. Generate embeddings for each chunk.
-    5. Store chunks in a vector store for retrieval.
+    """Ingest documents through loading, splitting, embedding, and storing.
+
+    :param loader: Document loader implementation.
+    :param chunker: Chunking strategy implementation.
+    :param embedding: Embedding provider.
+    :param vector_store: Vector store implementation.
     """
 
     def __init__(
@@ -41,6 +36,13 @@ class DocumentIngestionService(IngestDocumentsPort):
         embedding: EmbeddingPort,
         vector_store: VectorStorePort
     ):
+        """Initialize the ingestion service.
+
+        :param loader: Document loader implementation.
+        :param chunker: Chunking strategy implementation.
+        :param embedding: Embedding provider.
+        :param vector_store: Vector store implementation.
+        """
         self.loader = loader
         self.chunker = chunker
         self.embedding = embedding
@@ -48,6 +50,13 @@ class DocumentIngestionService(IngestDocumentsPort):
         logger.info("DocumentIngestionService initialized with loader, chunker, embedding, vector_store")
 
     async def ingest(self, documents_dir: str):
+        """Run the ingestion pipeline for a document path.
+
+        :param documents_dir: Path to the document or directory.
+        :return: List of chunks stored in the vector store.
+        :raises IngestionException: If any ingestion step fails.
+        :raises EmptyDocumentException: If no content is extracted.
+        """
         if not documents_dir or not documents_dir.strip():
             logger.error("Document path cannot be empty")
             raise IngestionException(message="Document path cannot be empty")

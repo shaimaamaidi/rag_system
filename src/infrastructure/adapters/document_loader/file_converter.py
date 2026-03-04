@@ -1,16 +1,9 @@
-"""
-FileConverter — Rendu fidèle des slides PPTX en PNG et conversion DOCX → PDF.
+"""Convert DOCX/PPTX to PDF or images for downstream processing.
 
-Stratégie par plateforme :
-    Windows  → Word COM (win32com)       pour DOCX → PDF  (arabe / RTL natif)
-               PowerPoint COM (win32com)  pour PPTX → PNG  (pixel-perfect)
-    Linux    → LibreOffice headless      pour DOCX → PDF et PPTX → PNG
-    macOS    → LibreOffice headless      pour DOCX → PDF et PPTX → PNG
-
-Dépendances :
-    Windows     : pip install pywin32   (Word + PowerPoint COM)
-    Linux/macOS : apt install libreoffice  /  brew install libreoffice
-    Fallback PDF→PNG : pip install pymupdf
+Platform strategy:
+    - Windows: Word COM for DOCX -> PDF, PowerPoint COM for PPTX -> PNG.
+    - Linux/macOS: LibreOffice headless for DOCX/PPTX conversions.
+    - Fallback: PyMuPDF for PDF -> PNG.
 """
 import logging
 import platform
@@ -34,21 +27,25 @@ CONVERTED_DOCS_DIR = Path(__file__).resolve().parents[4] / "converted_docs"
 
 
 class FileConverter:
-    """Convertit .pptx / .docx en PDF ou en images — cross-platform."""
+    """Convert PPTX/DOCX to PDF or PNG images across platforms."""
 
     CONVERTIBLE_EXTENSIONS = {".pptx", ".docx"}
 
     def __init__(self, output_dir: Path = CONVERTED_DOCS_DIR):
+        """Initialize the converter.
+
+        :param output_dir: Output directory for converted files.
+        """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         logger.info("FileConverter initialized with output directory: %s", self.output_dir)
-
-
-    # ------------------------------------------------------------------ #
-    #  Context manager — .docx / .pptx → PDF                             #
-    # ------------------------------------------------------------------ #
     @contextmanager
     def as_pdf_if_needed(self, file_path: str):
+        """Yield a PDF path, converting if needed.
+
+        :param file_path: Input file path.
+        :return: PDF path as a context-managed value.
+        """
         ext = Path(file_path).suffix.lower()
         if ext not in self.CONVERTIBLE_EXTENSIONS:
             yield file_path
@@ -56,15 +53,20 @@ class FileConverter:
         pdf_path = self.convert_to_pdf(file_path)
         yield pdf_path
 
-    # ------------------------------------------------------------------ #
-    #  PPTX → une PNG par slide                                          #
-    # ------------------------------------------------------------------ #
     def pptx_to_images(
         self,
         pptx_path: str,
         width: int = 3840,
         height: int = 2160,
     ) -> List[str]:
+        """Convert a PPTX file to PNG images.
+
+        :param pptx_path: Path to the PPTX file.
+        :param width: Image width in pixels.
+        :param height: Image height in pixels.
+        :return: List of image paths.
+        :raises DocumentLoaderException: If the file is missing or conversion fails.
+        """
         pptx_path_obj = Path(pptx_path)
         if not pptx_path_obj.exists():
             raise DocumentLoaderException(f"Fichier introuvable : {pptx_path}")
@@ -82,10 +84,13 @@ class FileConverter:
                 str(pptx_path_obj.resolve()), slide_dir
             )
 
-    # ------------------------------------------------------------------ #
-    #  Conversion vers PDF (dispatch plateforme)                         #
-    # ------------------------------------------------------------------ #
     def convert_to_pdf(self, file_path: str) -> str:
+        """Convert a DOCX or PPTX file to PDF.
+
+        :param file_path: Path to the input file.
+        :return: Path to the generated PDF.
+        :raises DocumentLoaderException: If the extension is unsupported or conversion fails.
+        """
         ext = Path(file_path).suffix.lower()
         logger.info("Converting %s to PDF", file_path)
 
@@ -98,14 +103,12 @@ class FileConverter:
             return self._to_pdf_libreoffice(file_path)
         raise DocumentLoaderException(f"Extension non supportée : {ext}")
 
-    # ------------------------------------------------------------------ #
-    #  DOCX → PDF via Word COM  (Windows — supporte arabe / RTL)        #
-    # ------------------------------------------------------------------ #
     def _docx_to_pdf_word_com(self, file_path: str) -> str:
-        """Utilise Microsoft Word via COM pour exporter en PDF.
+        """Convert DOCX to PDF using Word COM on Windows.
 
-        Word gère nativement l'arabe, le RTL et toutes les polices — aucune
-        dégradation du texte, contrairement à ReportLab.
+        :param file_path: Path to the DOCX file.
+        :return: Path to the generated PDF.
+        :raises DocumentLoaderException: If conversion fails.
         """
         file_path_obj = Path(file_path)
         if not file_path_obj.exists():
@@ -137,7 +140,7 @@ class FileConverter:
         finally:
             if doc is not None:
                 try:
-                    doc.Close(False)  # False = ne pas sauvegarder
+                    doc.Close(False)
                 except Exception:
                     pass
             if word is not None:
@@ -154,11 +157,13 @@ class FileConverter:
 
         return str(dest_pdf)
 
-    # ------------------------------------------------------------------ #
-    #  → PDF via LibreOffice headless  (Linux / macOS)                  #
-    # ------------------------------------------------------------------ #
     def _to_pdf_libreoffice(self, file_path: str) -> str:
-        """Convertit DOCX ou PPTX en PDF via LibreOffice headless."""
+        """Convert DOCX or PPTX to PDF using LibreOffice.
+
+        :param file_path: Path to the input file.
+        :return: Path to the generated PDF.
+        :raises DocumentLoaderException: If conversion fails.
+        """
         file_path_obj = Path(file_path)
         logger.info("Converting %s to PDF via LibreOffice headless", file_path)
 
@@ -200,9 +205,6 @@ class FileConverter:
 
         return str(dest_pdf)
 
-    # ------------------------------------------------------------------ #
-    #  Windows — PowerPoint COM (PPTX → PNG)                            #
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _pptx_to_images_windows(
         pptx_path: str,
@@ -210,6 +212,15 @@ class FileConverter:
         width: int,
         height: int,
     ) -> List[str]:
+        """Convert PPTX to PNG images using PowerPoint COM.
+
+        :param pptx_path: Path to the PPTX file.
+        :param slide_dir: Output directory for images.
+        :param width: Image width in pixels.
+        :param height: Image height in pixels.
+        :return: List of image paths.
+        :raises DocumentLoaderException: If conversion fails.
+        """
         logger.info("Starting PPTX -> PNG conversion on Windows: %s", pptx_path)
 
         powerpoint = None
@@ -267,14 +278,18 @@ class FileConverter:
             )
         return image_paths
 
-    # ------------------------------------------------------------------ #
-    #  Linux / macOS — LibreOffice headless (PPTX → PNG)               #
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _pptx_to_images_libreoffice(
         pptx_path: str,
         slide_dir: Path,
     ) -> List[str]:
+        """Convert PPTX to PNG images using LibreOffice.
+
+        :param pptx_path: Path to the PPTX file.
+        :param slide_dir: Output directory for images.
+        :return: List of image paths.
+        :raises DocumentLoaderException: If conversion fails.
+        """
         logger.info("Starting PPTX -> PNG conversion via LibreOffice: %s", pptx_path)
 
         libreoffice_cmd = FileConverter._find_libreoffice()
@@ -310,7 +325,6 @@ class FileConverter:
                     logger.info("Exported slide %d -> %s", idx, dest)
                 return image_paths
 
-            # Fallback : LibreOffice a produit un PDF → découpe avec fitz
             tmp_pdfs = list(Path(tmp_dir).glob("*.pdf"))
             if tmp_pdfs:
                 logger.warning("LibreOffice produced PDF instead of PNG, falling back to PyMuPDF")
@@ -324,7 +338,12 @@ class FileConverter:
 
     @staticmethod
     def _pdf_to_images_fitz(pdf_path: str, slide_dir: Path) -> List[str]:
-        """Convertit un PDF en PNG par page via PyMuPDF."""
+        """Convert a PDF to PNG images using PyMuPDF.
+
+        :param pdf_path: Path to the PDF file.
+        :param slide_dir: Output directory for images.
+        :return: List of image paths.
+        """
 
         logger.info("Converting PDF -> PNG via PyMuPDF: %s", pdf_path)
 
@@ -343,11 +362,13 @@ class FileConverter:
         doc.close()
         return image_paths
 
-    # ------------------------------------------------------------------ #
-    #  Utilitaires                                                        #
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _find_libreoffice() -> str:
+        """Locate the LibreOffice executable on the system.
+
+        :return: Command name or full path to LibreOffice.
+        :raises DocumentLoaderException: If LibreOffice is not found.
+        """
         candidates = [
             "libreoffice",
             "soffice",
@@ -366,17 +387,14 @@ class FileConverter:
             "macOS : brew install libreoffice"
         )
 
-    # ------------------------------------------------------------------ #
-    #  Nettoyage des fichiers convertis après traitement                  #
-    # ------------------------------------------------------------------ #
     def clear(self, file_path: str) -> None:
-        """Supprime le fichier converti et son dossier de slides si présent.
+        """Delete converted files and any slide directories.
 
-        À appeler après que le traitement du document est terminé.
+        :param file_path: Path to the converted file.
+        :return: None.
         """
         file_path_obj = Path(file_path)
 
-        # Supprimer le fichier lui-même (PDF converti, etc.)
         if file_path_obj.exists():
             try:
                 file_path_obj.unlink()
@@ -384,7 +402,6 @@ class FileConverter:
             except Exception as e:
                 logger.warning("Impossible de supprimer %s : %s", file_path_obj.name, e)
 
-        # Supprimer le dossier de slides PNG si présent (même nom sans extension)
         slide_dir = self.output_dir / file_path_obj.stem
         if slide_dir.exists() and slide_dir.is_dir():
             try:

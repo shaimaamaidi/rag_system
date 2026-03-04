@@ -1,8 +1,4 @@
-"""
-Module containing the AskQuestionUseCase class.
-This use case handles the process of answering a question by delegating
-to the RAG services.
-"""
+"""Application use case for answering questions via the RAG pipeline."""
 
 import logging
 
@@ -15,31 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 class AskQuestionUseCase(AskQuestionPort):
-    """
-    Use case for answering a question using the RAG services.
+    """Orchestrate question answering through the domain service.
 
-    This class implements the AskQuestionPort interface and delegates
-    the question-answering logic to a RAGService instance.
+    :param answer_question_service: Service that executes the RAG pipeline.
     """
 
     def __init__(self, answer_question_service: AnswerQuestionService):
-        """
-        Initialize the use case with a RAGService instance.
+        """Initialize the use case.
 
-        Args:
+        :param answer_question_service: Service that answers questions.
         """
         self.answer_question_service = answer_question_service
         logger.info("AskQuestionUseCase initialized with AnswerQuestionService")
 
     def execute(self, question: str) -> str:
-        """
-        Ask a question and get an answer using the RAG services.
+        """Execute the question-answering workflow.
 
-        Args:
-            question (str): The question to be answered.
-
-        Returns:
-            str: The answer returned by the RAG services.
+        :param question: Question text provided by the caller.
+        :return: Generated answer text.
         """
         logger.info("Executing question: %s", question)
         answer = self.answer_question_service.execute(question)

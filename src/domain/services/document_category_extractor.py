@@ -1,3 +1,5 @@
+"""Service for extracting document categories from an Excel mapping file."""
+
 import os
 import logging
 from pathlib import Path
@@ -13,14 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentCategoryExtractor:
-    """
-    Service pour extraire les catégories de documents depuis un fichier Excel.
+    """Extract document categories from an Excel file.
+
+    :param excel_path_env: Environment variable name containing the Excel path.
     """
 
     def __init__(self, excel_path_env: str = "EXCEL_PATH"):
-        """
-        Initialise le service en chargeant le chemin du fichier Excel depuis le .env.
-        :param excel_path_env: Nom de la variable d'environnement contenant le chemin Excel
+        """Initialize the extractor.
+
+        :param excel_path_env: Environment variable name containing the Excel path.
         """
         load_dotenv()
         excel_relative_path = os.getenv(excel_path_env)
@@ -37,9 +40,10 @@ class DocumentCategoryExtractor:
         logger.info("DocumentCategoryExtractor initialized with Excel path: %s", self.excel_path)
 
     def extract_categories(self) -> dict:
-        """
-        Lit le fichier Excel et renvoie un dictionnaire {nom_document: catégorie}.
-        :return: dict
+        """Read the Excel file and build a document-to-category mapping.
+
+        :return: Mapping of document name to category.
+        :raises CategoryExtractionException: If the Excel content cannot be parsed.
         """
         logger.info("Starting category extraction from Excel: %s", self.excel_path)
         try:

@@ -1,3 +1,5 @@
+"""Adapter that orchestrates OCR processing with Llama Cloud."""
+
 import logging
 
 from src.domain.models.ocr_result_model import OcrResult
@@ -11,14 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 class LlamaOcrAdapter(LlamaOcrPort):
-    """Adaptateur OCR orchestration."""
+    """Orchestrate OCR upload, polling, and parsing."""
 
     def __init__(self):
+        """Initialize the adapter with API client and parser."""
         self.client = LlamaApiClient()
         self.parser = LlamaOcrParser()
         logger.info("LlamaOcrAdapter initialized")
 
     async def process(self, image_path: str) -> OcrResult:
+        """Process an image through Llama OCR.
+
+        :param image_path: Path to the image file.
+        :return: Parsed OCR result.
+        """
         logger.info("Starting OCR process for image: %s", image_path)
 
         job_id = await self.client.upload_image(image_path)
@@ -48,7 +56,7 @@ class LlamaOcrAdapter(LlamaOcrPort):
         if has_table_post:
             post_graph = self.parser.convert_html_tables_to_markdown(post_graph)
 
-        logger.info("OCR process finished for image: %s, has_table=%s", image_path)
+        logger.info("OCR process finished for image: %s", image_path)
         return OcrResult(
             workflow=workflow,
             pre_graph_content=pre_graph,

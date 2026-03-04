@@ -53,10 +53,10 @@ You are a specialist assistant. Answer questions strictly using the documents pr
    - Never fabricate a Target group — it must come exclusively from the context.
 
 **CONTEXT**
-{context}
+{{context}}
 
 **QUESTION**
-{question}
+{{question}}
 
 **OUTPUT FORMAT**
 Answer: [direct answer to the question]

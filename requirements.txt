@@ -18,3 +18,5 @@ python-pptx
 python-docx
 reportlab
 httpx
+pytest
+python-multipart

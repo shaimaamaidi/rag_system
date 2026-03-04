@@ -1,3 +1,5 @@
+"""Extract text and table metadata from Document Intelligence results."""
+
 import logging
 from typing import Set, Optional
 from azure.ai.documentintelligence.models import ParagraphRole
@@ -9,15 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 class TextExtractor:
+    """Utilities for extracting page text and table metadata."""
 
     @staticmethod
     def extract_text_page(page, az_result, header_contents: Set[str]) -> dict:
-        """Extraction complète : texte + tables + metadata (depuis Azure DI)."""
+        """Extract full text and table metadata for a page.
+
+        :param page: Document Intelligence page object.
+        :param az_result: Analysis result containing tables and paragraphs.
+        :param header_contents: Header text to exclude.
+        :return: Parsed content with text and table metadata.
+        """
         logger.info("Started extracting page %s", page.page_number)
 
         page_num = page.page_number
 
-        # ── Collecter les tables de cette page ──────────────────────────
         page_tables = []
         for table_idx, table in enumerate(az_result.tables):
             for region in table.bounding_regions:
@@ -42,7 +50,7 @@ class TextExtractor:
                         "y_top": y_top,
                         "bbox": (x_min, x_max, y_top, y_bot),
                     })
-                    break  # Une seule entrée par table par page — évite les doublons
+                    break
 
         has_table = bool(page_tables)
         logger.info("Page %s: %d table(s) detected", page_num, len(page_tables))
@@ -58,12 +66,10 @@ class TextExtractor:
             for t in page_tables
         ]
 
-        # ── Calculer la limite basse du header ──────────────────────────
         header_y_max = TextExtractor._get_header_y_max(page.page_number, az_result)
         if header_y_max is not None:
             header_y_max += 0.10
 
-        # ── Tokeniser le header pour filtrage fragment ──────────────────
         header_tokens: Set[str] = set()
         for hc in header_contents:
             for tok in hc.replace("/", " ").replace("|", " ").split():
@@ -71,7 +77,6 @@ class TextExtractor:
                 if len(tok) >= 4:
                     header_tokens.add(tok)
 
-        # ── Collecter les numéros de page pour les ignorer ──────────────
         page_number_contents: Set[str] = set()
         for para in (az_result.paragraphs or []):
             role_str = str(getattr(para, "role", "")).upper()
@@ -81,6 +86,11 @@ class TextExtractor:
                         page_number_contents.add(para.content.strip())
 
         def _is_header_fragment(line_content: str) -> bool:
+            """Check whether a line is part of the header fragment.
+
+            :param line_content: Line text to evaluate.
+            :return: True if the line matches header tokens.
+            """
             if not line_content:
                 return False
             line_tokens = [
@@ -92,7 +102,6 @@ class TextExtractor:
                 return False
             return all(tok in header_tokens for tok in line_tokens)
 
-        # ── Construire les segments de texte (lignes hors header/table) ─
         segments = []
         for line in (page.lines or []):
             line_content = line.content.strip()
@@ -113,7 +122,6 @@ class TextExtractor:
 
             segments.append((line_y, line.content))
 
-        # ── Ajouter les tables en Markdown à leur position Y ────────────
         for t in page_tables:
             table_str = TextExtractor._table_to_markdown(t["table"])
             segments.append((t["y_top"], table_str))
@@ -129,10 +137,14 @@ class TextExtractor:
             "tables_metadata": tables_metadata,
         }
 
-    # ── Helpers statiques ───────────────────────────────────────────────
-
     @staticmethod
     def _get_header_y_max(page_number: int, az_result) -> Optional[float]:
+        """Find the maximum Y coordinate for header content.
+
+        :param page_number: Page number to inspect.
+        :param az_result: Analysis result containing paragraphs.
+        :return: Maximum header Y coordinate, if any.
+        """
         page_paragraphs = []
         for para in (az_result.paragraphs or []):
             if not para.bounding_regions:
@@ -160,6 +172,11 @@ class TextExtractor:
 
     @staticmethod
     def _line_y_center(line) -> float:
+        """Compute the vertical center of a line polygon.
+
+        :param line: Line object with polygon coordinates.
+        :return: Center Y coordinate.
+        """
         if not line.polygon:
             return 0.0
         y_coords = [line.polygon[i] for i in range(1, len(line.polygon), 2)]
@@ -167,6 +184,12 @@ class TextExtractor:
 
     @staticmethod
     def _line_in_table(line, boxes: list) -> bool:
+        """Check whether a line intersects any table bounding boxes.
+
+        :param line: Line object with polygon coordinates.
+        :param boxes: Table bounding boxes.
+        :return: True if the line is inside any table box.
+        """
         if not line.polygon or not boxes:
             return False
         x_coords = [line.polygon[i] for i in range(0, len(line.polygon), 2)]
@@ -177,12 +200,22 @@ class TextExtractor:
 
     @staticmethod
     def _table_to_markdown(table) -> str:
+        """Convert a table object to Markdown.
+
+        :param table: Table object with cell content.
+        :return: Markdown table string.
+        """
         grid = [[""] * table.column_count for _ in range(table.row_count)]
         for cell in table.cells:
             content = cell.content.replace("\n", " ").strip()
             grid[cell.row_index][cell.column_index] = content
 
         def _md_row(cells):
+            """Render a list of cells as a Markdown table row.
+
+            :param cells: Table row cell values.
+            :return: Markdown row string.
+            """
             return "| " + " | ".join(cells) + " |"
 
         header_row = _md_row(grid[0]) if grid else ""
@@ -192,6 +225,12 @@ class TextExtractor:
 
     @staticmethod
     def remove_header(text: str, header: str) -> str:
+        """Remove a header string from text when present.
+
+        :param text: Input text.
+        :param header: Header to remove.
+        :return: Text with header removed if found.
+        """
         if not header or not text:
             return text
         if header in text:
@@ -200,6 +239,12 @@ class TextExtractor:
 
     @staticmethod
     def extract_page_header_contents(page_number: int, az_result) -> Set[str]:
+        """Extract header contents for a page.
+
+        :param page_number: Page number to inspect.
+        :param az_result: Analysis result containing paragraphs.
+        :return: Set of header content strings.
+        """
         page_paragraphs = []
         for para in (az_result.paragraphs or []):
             if not para.bounding_regions:
@@ -231,9 +276,10 @@ class TextExtractor:
 
     @staticmethod
     def extract_tables_metadata_from_text(content: str) -> list:
-        """Fallback : détecte tables Markdown/HTML dans du texte brut (pour workflow/PPTX).
+        """Detect Markdown/HTML tables in raw text and return metadata.
 
-        y_position est None car non disponible depuis un résultat OCR pur (pas de coordonnées).
+        :param content: Raw text content.
+        :return: Table metadata list with counts and placeholders.
         """
         import re
         tables_metadata = []

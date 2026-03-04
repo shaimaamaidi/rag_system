@@ -1,7 +1,4 @@
-"""
-Module containing the RAGService class.
-Provides a service to answer questions using a Retrieval-Augmented Generation (RAG) pipeline.
-"""
+"""Domain service for answering questions using a RAG pipeline."""
 
 import logging
 from typing import List
@@ -21,13 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class AnswerQuestionService(AskQuestionPort):
-    """
-    Business services to answer questions using a Retrieval-Augmented Generation (RAG) approach.
+    """Answer questions by orchestrating embedding, retrieval, and generation.
 
-    This service uses:
-    - An embedding model to convert questions into vector representations.
-    - A vector store to retrieve relevant chunks of information.
-    - An answer generator to produce answers based on the retrieved context.
+    :param embedding_model: Provider for embedding vectors.
+    :param vector_store: Vector store for similarity search.
+    :param answer_generator: Generator for final answers.
     """
 
     def __init__(
@@ -36,13 +31,11 @@ class AnswerQuestionService(AskQuestionPort):
         vector_store: VectorStorePort,
         answer_generator: AnswerGeneratorPort,
     ):
-        """
-        Initialize the RAG services with the required components.
+        """Initialize the service.
 
-        Args:
-            embedding_model (EmbeddingPort): Component to generate embeddings for questions.
-            vector_store (VectorStorePort): Component to search for relevant chunks.
-            answer_generator (AnswerGeneratorPort): Component to generate answers from retrieved context.
+        :param embedding_model: Component to generate embeddings for questions.
+        :param vector_store: Component to search for relevant chunks.
+        :param answer_generator: Component to generate answers from retrieved context.
         """
         self.embedding = embedding_model
         self.vector_store = vector_store
@@ -50,6 +43,13 @@ class AnswerQuestionService(AskQuestionPort):
         logger.info("AnswerQuestionService initialized with embedding, vector store, and answer generator")
 
     def execute(self, question: str) -> str:
+        """Execute the question-answering flow.
+
+        :param question: Question text provided by the user.
+        :return: Generated answer.
+        :raises QuestionEmptyException: If the question is empty or whitespace.
+        :raises AnswerGenerationException: If embedding, retrieval, or generation fails.
+        """
         if not question or not question.strip():
             logger.warning("Empty question received")
             raise QuestionEmptyException(message="Question cannot be empty")
@@ -69,7 +69,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         try:
             logger.info("Searching for relevant chunks in vector store")
-            chunks = self.vector_store.search(question_embedding.vector, top_k=14)
+            chunks = self.vector_store.search(question_embedding, top_k=20)
             logger.info("Retrieved %d chunks from vector store", len(chunks))
         except AppException:
             raise
@@ -99,6 +99,11 @@ class AnswerQuestionService(AskQuestionPort):
 
     @staticmethod
     def _get_context_from_chunks(chunks: List[Chunk]) -> str:
+        """Assemble a context string from retrieved chunks.
+
+        :param chunks: Retrieved chunks with metadata.
+        :return: Concatenated context string for answer generation.
+        """
         context_list = []
         seen_paragraphs = set()
 
@@ -118,7 +123,6 @@ class AnswerQuestionService(AskQuestionPort):
                 entry += f"\ntarget group(s): {chunk.target_group or 'N/A'}"
                 entry += f"\n{chunk.original_text}"
 
-                # ✅ Ajouter les métadonnées des tables si présentes
                 if chunk.has_table and chunk.table_metadata:
                     import json
                     entry += f"\ntables:\n{json.dumps(chunk.table_metadata, ensure_ascii=False, indent=2)}"

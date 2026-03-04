@@ -1,14 +1,4 @@
-"""
-Module containing the EventHandler class.
-Provides an event handler for interacting with Azure AI Agents in streaming mode.
-
-Main features:
-- Handles partial messages (deltas) from the assistant agent.
-- Logs run events, steps, and tool calls.
-- Maintains an internal queue for streaming response chunks.
-- Handles errors and unhandled events.
-- Provides a generator to retrieve text chunks progressively.
-"""
+"""Event handler for streaming Azure AI Agent responses."""
 
 import logging
 from typing import Generator
@@ -29,35 +19,20 @@ logger = logging.getLogger(__name__)
 
 
 class EventHandler(AgentEventHandler):
-    """
-    Event handler for Azure AI Agents.
-
-    This class extends AgentEventHandler and provides:
-    - Management of partial messages (deltas) from the assistant.
-    - Logging of run events and tool calls.
-    - Storage of text chunks for progressive streaming.
-    """
+    """Handle streaming events from Azure AI Agents."""
 
     def __init__(self):
-        """
-        Initializes the EventHandler.
-
-        Attributes:
-            _current_message_id (str | None): ID of the message currently being processed.
-            _accumulated_text (str): Accumulated text for the current message.
-            _stream_queue (list): Queue of chunks ready for streaming.
-        """
+        """Initialize the handler and internal buffers."""
         super().__init__()
         self._current_message_id = None
         self._accumulated_text = ""
         self._stream_queue = []
 
     def on_message_delta(self, delta: MessageDeltaChunk) -> None:
-        """
-        Handles partial message updates (MessageDeltaChunk).
+        """Handle partial message updates.
 
-        Args:
-            delta (MessageDeltaChunk): The delta of the received message.
+        :param delta: Delta chunk of the received message.
+        :return: None.
         """
         if delta.id != self._current_message_id:
             if self._current_message_id is not None:
@@ -79,11 +54,10 @@ class EventHandler(AgentEventHandler):
             logger.info(partial_text)
 
     def on_thread_message(self, message: ThreadMessage) -> None:
-        """
-        Handles thread messages.
+        """Handle thread message updates.
 
-        Args:
-            message (ThreadMessage): The message received in the thread.
+        :param message: Thread message update.
+        :return: None.
         """
         if message.status == "completed" and message.role == "assistant":
             logger.info("")
@@ -93,31 +67,28 @@ class EventHandler(AgentEventHandler):
             logger.info("%s (id: %s)", message.status, message.id)
 
     def on_thread_run(self, run: ThreadRun) -> None:
-        """
-        Handles thread run events.
+        """Handle thread run events.
 
-        Args:
-            run (ThreadRun): The current run instance.
+        :param run: Thread run instance.
+        :return: None.
         """
         logger.info("status > %s", run.status)
         if run.status == "failed":
             logger.error("error > %s", run.last_error)
 
     def on_run_step(self, step: RunStep) -> None:
-        """
-        Handles run steps.
+        """Handle run step updates.
 
-        Args:
-            step (RunStep): The step being executed.
+        :param step: Run step instance.
+        :return: None.
         """
         logger.info("%s > %s", step.type, step.status)
 
     def on_run_step_delta(self, delta: RunStepDeltaChunk) -> None:
-        """
-        Handles step deltas to track tool calls.
+        """Handle run step deltas to track tool calls.
 
-        Args:
-            delta (RunStepDeltaChunk): The delta of the step received.
+        :param delta: Run step delta chunk.
+        :return: None.
         """
         if delta.delta.step_details and delta.delta.step_details.tool_calls:
             for tcall in delta.delta.step_details.tool_calls:
@@ -125,45 +96,40 @@ class EventHandler(AgentEventHandler):
                     logger.info("tool call > %s", tcall.function.name)
 
     def on_unhandled_event(self, event_type: str, event_data):
-        """
-        Handles unhandled events.
+        """Handle unhandled events.
 
-        Args:
-            event_type (str): The type of the event.
-            event_data: The event data.
+        :param event_type: Event type string.
+        :param event_data: Event payload.
+        :return: None.
         """
         logger.debug("unhandled > %s", event_type)
 
     def on_error(self, data: str) -> None:
-        """
-        Handles errors.
+        """Handle errors.
 
-        Args:
-            data (str): Error message.
+        :param data: Error message.
+        :return: None.
         """
         logger.error("error > %s", data)
 
     def on_done(self) -> None:
-        """
-        Called when the run is completed.
+        """Handle run completion.
+
+        :return: None.
         """
         logger.info("done")
 
     def get_stream_chunks(self) -> Generator[str, None, None]:
-        """
-        Generator to retrieve text chunks progressively for streaming.
+        """Yield queued streaming chunks.
 
-        Yields:
-            str: A chunk of text to be displayed.
+        :return: Generator of text chunks.
         """
         while self._stream_queue:
             yield self._stream_queue.pop(0)
 
     def has_chunks(self) -> bool:
-        """
-        Checks if there are chunks available in the queue.
+        """Return True if there are chunks queued for streaming.
 
-        Returns:
-            bool: True if chunks are available, False otherwise.
+        :return: True when chunks are available.
         """
         return len(self._stream_queue) > 0

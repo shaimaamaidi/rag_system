@@ -1,3 +1,5 @@
+"""Page processing utilities for workflow and OCR extraction."""
+
 import logging
 import os
 import json
@@ -16,16 +18,25 @@ logger = logging.getLogger(__name__)
 
 
 class PageProcessor:
-    """Orchestration pour extraire texte, workflows et tables d'une page."""
+    """Extract text, workflows, and tables from pages."""
 
     def __init__(self, prompt_provider: PromptProviderPort):
+        """Initialize the page processor.
+
+        :param prompt_provider: Prompt provider for workflow conversion.
+        """
         self._llama = LlamaOcrAdapter()
         self._converter = AzureWorkflowConverter(prompt_provider)
 
-    # ------------------------------------------------------------------ #
-    #  PDF workflow page (existing)                                       #
-    # ------------------------------------------------------------------ #
     async def process_workflow_page(self, page, file_path: str) -> dict:
+        """Process a PDF workflow page into structured content.
+
+        :param page: Document Intelligence page object.
+        :param file_path: Path to the PDF file.
+        :return: Parsed content dictionary.
+        :raises PageImageExtractionException: If the page image cannot be extracted.
+        :raises WorkflowConversionException: If workflow conversion fails.
+        """
         tmp_dir = "tmp_images"
         os.makedirs(tmp_dir, exist_ok=True)
         image_path = os.path.join(tmp_dir, f"page_{page.page_number}.png")
@@ -36,7 +47,6 @@ class PageProcessor:
             image_path,
         )
 
-        # PDF → image
         try:
             doc = fitz.open(file_path)
             if page.page_number - 1 >= len(doc):
@@ -59,18 +69,13 @@ class PageProcessor:
 
         return await self._run_llama_pipeline(image_path, cleanup=True)
 
-    # ------------------------------------------------------------------ #
-    #  PPTX slide (new) — image already on disk, no PDF extraction       #
-    # ------------------------------------------------------------------ #
     async def process_pptx_slide(self, image_path: str, slide_number: int) -> dict:
-        """Traite une slide PPTX déjà exportée en image.
+        """Process a PPTX slide image into structured content.
 
-        Args:
-            image_path: Chemin vers le PNG de la slide (persistent).
-            slide_number: Numéro de la slide (1-indexed), utilisé pour les messages d'erreur.
-
-        Returns:
-            dict avec les clés : type, text, has_table, tables_metadata.
+        :param image_path: Path to the slide image.
+        :param slide_number: Slide number for logging.
+        :return: Parsed content dictionary.
+        :raises PageImageExtractionException: If the image does not exist.
         """
         logger.info("Processing PPTX slide %s: %s", slide_number, image_path)
 
@@ -80,18 +85,15 @@ class PageProcessor:
                 message=f"Slide image not found for slide {slide_number}: {image_path}"
             )
 
-        # Images are persistent — no cleanup
         return await self._run_llama_pipeline(image_path, cleanup=False)
 
-    # ------------------------------------------------------------------ #
-    #  Shared Llama OCR + workflow conversion pipeline                   #
-    # ------------------------------------------------------------------ #
     async def _run_llama_pipeline(self, image_path: str, cleanup: bool) -> dict:
-        """Appelle Llama OCR sur une image et convertit le workflow si présent.
+        """Run OCR and workflow conversion on an image.
 
-        Args:
-            image_path: Chemin de l'image à traiter.
-            cleanup: Si True, supprime l'image après traitement.
+        :param image_path: Path to the image to process.
+        :param cleanup: Whether to delete the image after processing.
+        :return: Parsed content dictionary.
+        :raises WorkflowConversionException: If workflow conversion fails.
         """
         logger.info("Running Llama OCR pipeline on %s", image_path)
 

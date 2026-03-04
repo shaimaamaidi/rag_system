@@ -1,39 +1,20 @@
-"""
-Module: app_exception
-Description:
-    This module defines the base application exception `AppException` used for
-    domain-specific or business logic errors. Other custom exceptions should
-    inherit from this class.
-
-    The `AppException` class includes attributes for a message, an error code,
-    and an HTTP status code, allowing consistent error handling across the
-    application.
-"""
+"""Base application exception for domain-specific errors."""
 
 
 class AppException(Exception):
-    """
-    Base application (business) exception.
+    """Base exception for domain and business logic errors.
 
-    This exception can be used to represent domain-specific or business logic
-    errors in the application. All other custom exceptions should inherit from
-    this class.
-
-    Attributes:
-        message (str): Description of the exception.
-        code (str): Error code representing the type of application exception.
-                    Defaults to "APP_ERROR".
-        http_status (int): HTTP status code associated with this exception.
+    :ivar message: Human-readable error message.
+    :ivar code: Error code identifier.
+    :ivar http_status: HTTP status code for API responses.
     """
 
     def __init__(self, message: str, code: str = "APP_ERROR", http_status: int = 400):
-        """
-        Initialize a new AppException instance.
+        """Initialize the exception.
 
-        Args:
-            message (str): A human-readable description of the exception.
-            code (str, optional): A string representing the error code. Defaults to "APP_ERROR".
-            http_status (int, optional): HTTP status code to be returned. Defaults to 400.
+        :param message: Human-readable error message.
+        :param code: Error code identifier.
+        :param http_status: HTTP status code to return.
         """
         self.message = message
         self.code = code

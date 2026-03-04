@@ -1,13 +1,11 @@
-"""
-ParagraphFactory: Responsible for creating Paragraph objects.
-Centralizes all Paragraph instantiation logic.
-"""
+"""Factory helpers for creating :class:`Paragraph` instances."""
 from typing import Any, Optional
 
 from src.domain.models.paragraph_model import Paragraph
 
 
 class ParagraphFactory:
+    """Create :class:`Paragraph` objects with consistent defaults."""
 
     @staticmethod
     def create(
@@ -19,6 +17,17 @@ class ParagraphFactory:
         is_article: bool = False,
         table_metadata: list[Any] = None,
     ) -> Paragraph:
+        """Create a paragraph instance.
+
+        :param title: Section title.
+        :param sub_title: Subsection title.
+        :param name_doc: Document name.
+        :param text: Paragraph text.
+        :param has_table: Whether the paragraph contains a table.
+        :param is_article: Whether this paragraph represents an article.
+        :param table_metadata: Table metadata list.
+        :return: Paragraph instance.
+        """
         return Paragraph(
             title          = title,
             sub_title      = sub_title,
@@ -39,6 +48,16 @@ class ParagraphFactory:
         has_table: bool,
         table_metadata: list[Any] = None,
     ) -> Paragraph:
+        """Create a paragraph for pre-heading content.
+
+        :param active_title: Active document title.
+        :param page_header: Page header used as subtitle.
+        :param name_doc: Document name.
+        :param text: Paragraph text.
+        :param has_table: Whether the paragraph contains a table.
+        :param table_metadata: Table metadata list.
+        :return: Paragraph instance.
+        """
         return ParagraphFactory.create(
             title          = active_title,
             sub_title      = page_header,
@@ -58,6 +77,16 @@ class ParagraphFactory:
         has_table: bool,
         table_metadata: list[Any] = None,
     ) -> Paragraph:
+        """Create a paragraph for workflow content.
+
+        :param active_title: Active document title.
+        :param workflow_title: Workflow title used as subtitle.
+        :param name_doc: Document name.
+        :param text: Paragraph text.
+        :param has_table: Whether the paragraph contains a table.
+        :param table_metadata: Table metadata list.
+        :return: Paragraph instance.
+        """
         return ParagraphFactory.create(
             title          = active_title,
             sub_title      = workflow_title,
@@ -77,6 +106,16 @@ class ParagraphFactory:
         has_table: bool,
         table_metadata: list[Any] = None,
     ) -> Paragraph:
+        """Create a paragraph marked as an article.
+
+        :param active_title: Active document title.
+        :param sub_title: Subsection title.
+        :param name_doc: Document name.
+        :param text: Paragraph text.
+        :param has_table: Whether the paragraph contains a table.
+        :param table_metadata: Table metadata list.
+        :return: Paragraph instance.
+        """
         return ParagraphFactory.create(
             title          = active_title,
             sub_title      = sub_title,

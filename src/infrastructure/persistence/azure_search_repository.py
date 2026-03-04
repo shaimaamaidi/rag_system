@@ -1,26 +1,4 @@
-"""
-Module: AzureSearchRepository
-
-This module contains the `AzureSearchRepository` class, which acts as a repository
-for managing CRUD operations and semantic searches in Azure Cognitive Search.
-
-Responsibilities:
-    - Upload Chunk objects (from SmartChunker) to the Azure Search index.
-    - Perform vector-based semantic search to retrieve relevant chunks.
-    - Handle optional filters for search queries.
-
-Chunk schema (aligned with SmartChunker output):
-    id              → chunk_id        (key)
-    doc_name        → doc_name
-    paragraph_id    → paragraph_id
-    title           → title
-    sub_title       → sub_title
-    chunk_text      → chunk_text      (searchable + semantic)
-    original_text   → original_text
-    embedding       → embedding       (vector HNSW)
-    has_table       → has_table       (bool, filterable)
-    table_metadata  → table_metadata  (List[str], searchable)
-"""
+"""Repository for Azure Cognitive Search operations."""
 import logging
 from typing import List
 
@@ -38,41 +16,27 @@ logger = logging.getLogger(__name__)
 
 
 class AzureSearchRepository:
-    """
-    Repository for interacting with Azure Cognitive Search.
+    """Repository for Azure Cognitive Search operations.
 
-    Responsibilities:
-        - Upload Chunk objects produced by SmartChunker to the search index.
-        - Perform vector-based semantic search to find the most relevant chunks.
-        - Handle optional OData filters for search queries.
+    :param client: Configured AzureSearchClient instance.
     """
 
     def __init__(self, client: AzureSearchClient):
-        """
-        Initialize the repository.
+        """Initialize the repository.
 
-        Args:
-            client (AzureSearchClient): Configured AzureSearchClient instance.
+        :param client: Configured AzureSearchClient instance.
         """
         self.client = client
         self.search_client = self.client.get_search_client()
         logger.info("AzureSearchRepository initialized.")
 
-    # ── upload ────────────────────────────────
     def upload_chunks(self, chunks: List[Chunk]):
-        """
-        Upload a list of Chunk objects to Azure Cognitive Search.
+        """Upload chunks to the Azure Search index.
 
-        Args:
-            chunks (List[Chunk]): Chunks produced by SmartChunker.
-                                  Each chunk must have a non-None `embedding`
-                                  before being uploaded.
-
-        Returns:
-            list: Result of the upload operation from Azure Search SDK.
-
-        Raises:
-            ValueError: If any chunk is missing its embedding vector.
+        :param chunks: Chunk list with embeddings populated.
+        :return: Result from Azure Search SDK.
+        :raises ChunkMissingEmbeddingException: If a chunk has no embedding.
+        :raises AzureSearchUploadException: If upload fails.
         """
         documents = []
         for chunk in chunks:
@@ -92,25 +56,17 @@ class AzureSearchRepository:
                 message=f"Failed to upload chunks to Azure Search: {str(e)}",
             ) from e
 
-    # ── semantic / vector search ──────────────
-
     def semantic_search(
         self,
         vector_query: List[float],
         top_k: int = 14,
     ) -> List[Chunk]:
-        """
-        Perform a vector-based semantic search.
+        """Perform a vector-based semantic search.
 
-        Args:
-            vector_query (List[float]): Embedding of the user query.
-            top_k (int): Number of top results to retrieve. Defaults to 7.
-
-        Returns:
-            List[Chunk]: Matching chunks with all fields populated.
-
-        Raises:
-            RuntimeError: If an error occurs during the search operation.
+        :param vector_query: Query embedding vector.
+        :param top_k: Maximum number of results to return.
+        :return: Matching chunks with populated fields.
+        :raises AzureSearchQueryException: If the search operation fails.
         """
         try:
 
@@ -141,7 +97,6 @@ class AzureSearchRepository:
                 semantic_configuration_name="semantic_config",
             )
 
-            # ── map results → Chunk objects ───────────────────────────────
             chunks: List[Chunk] = []
             for r in results:
                 chunk = Chunk(

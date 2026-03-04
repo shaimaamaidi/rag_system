@@ -1,3 +1,5 @@
+"""Document loading orchestration for PDF, DOCX, and PPTX."""
+
 import logging
 from typing import List, Tuple, Set
 from pathlib import Path
@@ -19,21 +21,28 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentLoader(DocumentLoaderPort):
-    """Orchestration principale pour le chargement et traitement d'un document."""
+    """Orchestrate loading and preprocessing for supported documents."""
 
     SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 
     def __init__(self, prompt_provider: PromptProviderPort):
+        """Initialize the loader and its collaborators.
+
+        :param prompt_provider: Prompt provider for workflow conversion.
+        """
         self._client = AzureDocumentClient()
         self._processor = PageProcessor(prompt_provider)
         self._extractor = TextExtractor()
         self._page_classifier = PageClassifier()
         self._file_converter = FileConverter()
 
-    # ------------------------------------------------------------------ #
-    #  Point d'entrée public                                               #
-    # ------------------------------------------------------------------ #
     async def load(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        """Load and process a document.
+
+        :param file_path: Path to the input document.
+        :return: Tuple of page content and section headings.
+        :raises DocumentLoaderException: If validation or loading fails.
+        """
         logger.info("Starting document load: %s", file_path)
 
         if not file_path:
@@ -66,10 +75,12 @@ class DocumentLoader(DocumentLoaderPort):
                 self._file_converter.clear(converted_path)
                 logger.info("Cleared converted files: %s", converted_path)
 
-    # ------------------------------------------------------------------ #
-    #  PPTX — chaque slide traitée comme image (type forcé workflow)     #
-    # ------------------------------------------------------------------ #
     async def _load_pptx(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        """Load a PPTX file by converting slides to images.
+
+        :param file_path: Path to the PPTX file.
+        :return: Tuple of page content and empty headings list.
+        """
         logger.info("Processing PPTX file: %s", file_path)
 
         image_paths: List[str] = self._file_converter.pptx_to_images(file_path)
@@ -99,10 +110,12 @@ class DocumentLoader(DocumentLoaderPort):
 
         return pages, []
 
-    # ------------------------------------------------------------------ #
-    #  PDF — pipeline Azure DI complet                                    #
-    # ------------------------------------------------------------------ #
     async def _load_pdf(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        """Load a PDF file and extract pages and headings.
+
+        :param file_path: Path to the PDF file.
+        :return: Tuple of page content and headings.
+        """
         logger.info("Processing PDF file: %s", file_path)
 
         az_result = self._client.analyze_file(file_path)
@@ -139,7 +152,6 @@ class DocumentLoader(DocumentLoaderPort):
                 label,
             )
 
-        # Classification du document basé sur la densité d'articles
         article_keywords = ["المادة", "مادة"]
         is_article_doc = self.classify_document_by_article_density(
             headings, article_keywords, len(az_result.pages)
@@ -153,11 +165,13 @@ class DocumentLoader(DocumentLoaderPort):
 
         return pages, headings
 
-    # ------------------------------------------------------------------ #
-    #  Helpers internes                                                   #
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _extract_section_headings(az_result) -> List[SectionHeading]:
+        """Extract section headings from Document Intelligence results.
+
+        :param az_result: Analysis result.
+        :return: Sorted list of section headings.
+        """
         headings = []
         for paragraph in (az_result.paragraphs or []):
             if paragraph.role not in ("title", "sectionHeading"):
@@ -183,6 +197,12 @@ class DocumentLoader(DocumentLoaderPort):
 
     @staticmethod
     def _has_workflow_keyword(page, az_result) -> bool:
+        """Detect workflow keywords inside table headers for a page.
+
+        :param page: Document Intelligence page object.
+        :param az_result: Analysis result with tables.
+        :return: True if workflow keywords are found.
+        """
         workflow_keywords = ["رموز"]
         for table in az_result.tables or []:
             for region in table.bounding_regions:
@@ -197,15 +217,19 @@ class DocumentLoader(DocumentLoaderPort):
                                 return True
         return False
 
-    # ------------------------------------------------------------------ #
-    #  Classification document                                            #
-    # ------------------------------------------------------------------ #
     @staticmethod
     def classify_document_by_article_density(
         headings: List[SectionHeading],
         keywords: list,
         total_pages: int,
     ) -> bool:
+        """Classify a document based on article heading density.
+
+        :param headings: Extracted section headings.
+        :param keywords: Keywords indicating article headings.
+        :param total_pages: Total number of pages.
+        :return: True if the document is classified as article type.
+        """
         if total_pages == 0:
             return False
         article_pages: Set[int] = {
@@ -220,6 +244,12 @@ class DocumentLoader(DocumentLoaderPort):
         headings: List[SectionHeading],
         keywords: list,
     ) -> List[SectionHeading]:
+        """Filter headings to keep those matching keyword sections.
+
+        :param headings: Extracted section headings.
+        :param keywords: Keywords indicating article headings.
+        :return: Filtered heading list.
+        """
         if not headings:
             return []
 

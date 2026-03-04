@@ -1,7 +1,4 @@
-"""
-Module containing the Embedding dataclass.
-Represents a vector embedding for a piece of text or a document.
-"""
+"""Embedding model definitions."""
 
 from dataclasses import dataclass
 from typing import List
@@ -9,11 +6,9 @@ from typing import List
 
 @dataclass
 class Embedding:
-    """
-    Represents an embedding vector for a piece of text or a document.
+    """Container for an embedding vector.
 
-    Attributes:
-        vector (List[float]): Numerical vector representing the semantic embedding.
+    :ivar vector: Numerical vector representing semantic meaning.
     """
 
     vector: List[float]

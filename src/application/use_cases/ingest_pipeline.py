@@ -1,8 +1,4 @@
-"""
-Module containing the IngestDocumentsUseCase class.
-This use case handles the ingestion of documents by delegating
-the process to the DocumentIngestionService.
-"""
+"""Application use case for ingesting documents into the RAG pipeline."""
 
 import logging
 
@@ -15,32 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 class IngestDocumentUseCase(IngestDocumentsPort):
-    """
-    Use case for ingesting documents using the DocumentIngestionService.
+    """Orchestrate document ingestion through the domain service.
 
-    This class implements the IngestDocumentsPort interface and
-    delegates the document ingestion logic to a DocumentIngestionService instance.
+    :param ingestion_service: Service that performs ingestion steps.
     """
 
     def __init__(self, ingestion_service: DocumentIngestionService):
-        """
-        Initialize the use case with a DocumentIngestionService instance.
+        """Initialize the use case.
 
-        Args:
-            ingestion_service (DocumentIngestionService): Service responsible for document ingestion.
+        :param ingestion_service: Service responsible for document ingestion.
         """
         self.ingestion_service = ingestion_service
         logger.info("IngestDocumentUseCase initialized with DocumentIngestionService")
 
     async def ingest(self, documents_dir: str) -> None:
-        """
-        Ingest documents from the specified directory.
+        """Ingest documents from a directory.
 
-        Args:
-            documents_dir (str): Path to the directory containing documents to ingest.
-
-        Returns:
-            None
+        :param documents_dir: Path to the directory containing documents.
+        :return: None.
         """
         logger.info("Starting document ingestion from directory: %s", documents_dir)
         await self.ingestion_service.ingest(documents_dir)

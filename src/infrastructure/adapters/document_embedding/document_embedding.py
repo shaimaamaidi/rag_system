@@ -1,3 +1,5 @@
+"""Azure OpenAI embedding provider adapter."""
+
 import os
 from typing import List
 from dotenv import load_dotenv
@@ -15,12 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentEmbedding(EmbeddingPort):
-    """
-    Azure OpenAI-based embedding provider for generating embeddings for text chunks.
-    Implements the EmbeddingPort interface for use in RAG pipelines.
+    """Generate embeddings using Azure OpenAI.
+
+    Implements :class:`EmbeddingPort` for use in the RAG pipeline.
     """
 
     def __init__(self):
+        """Initialize the Azure OpenAI embedding client.
+
+        :raises AzureOpenAIConfigException: If required env vars are missing.
+        :raises EmbeddingInitException: If the client cannot be initialized.
+        """
         logger.info("Initializing Azure OpenAI embedding client")
         try:
             load_dotenv()
@@ -48,7 +55,12 @@ class DocumentEmbedding(EmbeddingPort):
             raise EmbeddingInitException("Failed to initialize EmbeddingsModel") from e
 
     def generate_embeddings(self, chunks):
-        """Génère les embeddings pour tous les chunks."""
+        """Generate embeddings for all chunks.
+
+        :param chunks: Chunk list to embed.
+        :return: Updated chunks with embeddings.
+        :raises EmbeddingGenerationException: If embedding generation fails.
+        """
         logger.info("Starting embedding generation for chunks")
         for c in chunks:
             try:
@@ -60,17 +72,11 @@ class DocumentEmbedding(EmbeddingPort):
         return chunks
 
     def get_embedding_vector(self, text: str) -> List[float]:
-        """
-        Generate an embedding vector for a given text using Azure OpenAI.
+        """Generate an embedding vector for text.
 
-        Args:
-            text (str): Text to embed.
-
-        Returns:
-            List[float]: Embedding vector.
-
-        Raises:
-            RuntimeError: If embedding generation fails.
+        :param text: Text to embed.
+        :return: Embedding vector.
+        :raises RuntimeError: If embedding generation fails.
         """
         try:
             response = self.client.embeddings.create(input=text, model=self.AZURE_EMBEDDING_MODEL)

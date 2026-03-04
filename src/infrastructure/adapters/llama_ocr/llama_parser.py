@@ -1,3 +1,5 @@
+"""Parser utilities for OCR markdown and workflow extraction."""
+
 import logging
 import re
 
@@ -8,15 +10,25 @@ logger = logging.getLogger(__name__)
 
 
 class LlamaOcrParser:
-    """Extraction et parsing du markdown / tables HTML en Markdown."""
+    """Parse OCR output and extract workflow content."""
 
     @staticmethod
     def extract_text_from_response(data: dict):
+        """Extract markdown or text content from an OCR response.
+
+        :param data: OCR response payload.
+        :return: Extracted markdown or text.
+        """
         raw_md = LlamaOcrParser._extract_raw_markdown(data)
         return raw_md
 
     @staticmethod
     def _extract_raw_markdown(data: dict) -> str:
+        """Return the raw markdown or text from response payload.
+
+        :param data: OCR response payload.
+        :return: Raw markdown or plain text.
+        """
         for key in ("markdown_full", "markdown"):
             obj = data.get(key)
             if isinstance(obj, dict):
@@ -45,6 +57,11 @@ class LlamaOcrParser:
 
     @staticmethod
     def split_mermaid_blocks(raw_md: str):
+        """Split raw markdown into Mermaid workflow and surrounding text.
+
+        :param raw_md: Raw markdown string.
+        :return: Tuple of (workflow, pre_graph, post_graph).
+        """
         pattern = re.compile(r"```(?:mermaid)?\s*\n(.*?)```", re.DOTALL)
         matches = list(pattern.finditer(raw_md))
 
@@ -64,9 +81,19 @@ class LlamaOcrParser:
 
     @staticmethod
     def convert_html_tables_to_markdown(text: str) -> str:
+        """Convert HTML tables in text to Markdown format.
+
+        :param text: Input text containing HTML tables.
+        :return: Text with HTML tables converted to Markdown.
+        """
         table_pattern = re.compile(r"<table.*?>.*?</table>", re.DOTALL | re.IGNORECASE)
 
         def convert_single_table(table_html: str) -> str:
+            """Convert a single HTML table block to Markdown.
+
+            :param table_html: HTML table markup.
+            :return: Markdown table string.
+            """
             rows = re.findall(r"<tr.*?>(.*?)</tr>", table_html, re.DOTALL | re.IGNORECASE)
             md_rows = []
             for row in rows:

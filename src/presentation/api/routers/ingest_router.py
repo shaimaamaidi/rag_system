@@ -1,3 +1,5 @@
+"""Document ingestion API routes."""
+
 import logging
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Request
 from src.domain.models.ingest_response_model import IngestResponse
@@ -9,6 +11,11 @@ setup_logger()
 logger = logging.getLogger(__name__)
 
 def get_ingest_use_case(request: Request):
+    """Resolve the ingestion use case from application state.
+
+    :param request: Incoming FastAPI request.
+    :return: Ingest use case instance.
+    """
     return request.app.state.container.ingest_use_case
 
 @router.post(
@@ -25,6 +32,12 @@ async def ingest_document(
     file: UploadFile = File(..., description="PDF file to ingest"),
     use_case=Depends(get_ingest_use_case),
 ) -> IngestResponse:
+    """Ingest a single uploaded PDF file.
+
+    :param file: Uploaded PDF file.
+    :param use_case: Injected ingestion use case.
+    :return: Ingestion response payload.
+    """
 
     logger.info("Received file upload: %s", file.filename)
 

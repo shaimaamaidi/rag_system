@@ -1,3 +1,5 @@
+"""Page classification heuristics for workflow detection."""
+
 import logging
 import statistics
 from azure.ai.documentintelligence.models import DocumentPage
@@ -11,12 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 class PageClassifier(PageClassifierPort):
+    """Classify pages as workflow or text based on layout heuristics."""
 
     def __init__(self):
+        """Initialize the classifier with default thresholds."""
         self.thresholds = ClassificationThresholds()
         logger.info("PageClassifier initialized with thresholds: %s", self.thresholds)
 
     def classify(self, page: DocumentPage, has_keyword: bool) -> PageLabel:
+        """Classify a page into a label.
+
+        :param page: Azure Document Intelligence page.
+        :param has_keyword: Whether workflow keywords were detected.
+        :return: Page label ("workflow" or "text").
+        """
         metrics = PageClassifier._compute_metrics(page)
         slr = metrics.get("short_line_ratio")
         awpl = metrics.get("avg_words_per_line")
@@ -49,6 +59,11 @@ class PageClassifier(PageClassifierPort):
 
     @staticmethod
     def _compute_metrics(page) -> dict:
+        """Compute layout metrics used for classification.
+
+        :param page: Azure Document Intelligence page.
+        :return: Metric dictionary with ratios and spacing values.
+        """
         lines = page.lines or []
 
         if not lines:
@@ -83,9 +98,11 @@ class PageClassifier(PageClassifierPort):
 
     @staticmethod
     def _has_key_word_in_header_table(page, result) -> bool:
-        """
-        Retourne True si :
-        - Une cellule de la première ligne d'une table contient un mot-clé
+        """Return True if a header table cell contains a workflow keyword.
+
+        :param page: Azure Document Intelligence page.
+        :param result: Document Intelligence analysis result.
+        :return: True if a keyword is found in a table header.
         """
         workflow_keywords = ["رموز"]
 

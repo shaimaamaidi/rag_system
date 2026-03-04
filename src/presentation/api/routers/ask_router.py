@@ -1,22 +1,26 @@
+"""Question answering API routes."""
+
 import logging
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from src.domain.exceptions.azure_agent_run_exception import AzureAgentRunException
 from src.domain.exceptions.question_empty_exception import QuestionEmptyException
 from src.domain.models.ask_request_model import AskRequest
-from src.infrastructure.logging.logger import setup_logger  # ton utilitaire de log
+from src.infrastructure.logging.logger import setup_logger
 
 router = APIRouter(prefix="/ask", tags=["Question Answering"])
 
-# ── Logger
 setup_logger()
 logger = logging.getLogger(__name__)
 
-# ── Dependency ────────────────────────────────────────────────────────────────
 def get_agent(request: Request):
+    """Resolve the agent adapter from application state.
+
+    :param request: Incoming FastAPI request.
+    :return: Agent adapter instance.
+    """
     return request.app.state.container.agent_adapter
 
-# ── Endpoint ──────────────────────────────────────────────────────────────────
 @router.post(
     "/",
     status_code=status.HTTP_200_OK,
@@ -27,6 +31,12 @@ async def ask_question(
     body: AskRequest,
     agent=Depends(get_agent),
 ) -> StreamingResponse:
+    """Stream answers for a user question.
+
+    :param body: Request payload containing the question.
+    :param agent: Injected agent adapter.
+    :return: Streaming response for the agent output.
+    """
 
     question_text = body.question.strip()
     if not question_text:
@@ -38,6 +48,10 @@ async def ask_question(
     logger.info("Received question: %s", question_text)
 
     def stream_generator():
+        """Yield streaming chunks from the agent.
+
+        :return: Generator of streaming response chunks.
+        """
         try:
             for chunk in agent.ask_question_stream(question=question_text):
                 yield chunk

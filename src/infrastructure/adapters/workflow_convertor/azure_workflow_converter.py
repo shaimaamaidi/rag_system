@@ -1,3 +1,5 @@
+"""Azure OpenAI adapter for converting Mermaid workflows to JSON."""
+
 import logging
 import os
 
@@ -17,7 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class AzureWorkflowConverter(WorkflowConverterPort):
+    """Convert Mermaid workflows using Azure OpenAI.
+
+    :param prompt_provider: Provider for system and user prompts.
+    """
+
     def __init__(self, prompt_provider: PromptProviderPort):
+        """Initialize the converter.
+
+        :param prompt_provider: Provider for system and user prompts.
+        :raises WorkflowConverterConfigException: If required env vars are missing.
+        """
         load_dotenv()
         api_key = os.getenv("AZURE_OPENAI_API_KEY")
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -40,6 +52,12 @@ class AzureWorkflowConverter(WorkflowConverterPort):
         logger.info("AzureWorkflowConverter initialized with deployment: %s", self._deployment)
 
     def convert(self, mermaid_text: str) -> WorkflowResult:
+        """Convert Mermaid text into a workflow JSON payload.
+
+        :param mermaid_text: Mermaid flowchart content.
+        :return: Workflow conversion result.
+        :raises WorkflowConversionException: If conversion fails or input is empty.
+        """
         if not mermaid_text or not mermaid_text.strip():
             raise WorkflowConversionException(
                 message="Mermaid text cannot be empty",

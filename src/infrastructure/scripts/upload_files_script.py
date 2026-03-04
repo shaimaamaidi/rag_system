@@ -1,7 +1,4 @@
-"""
-Script: ingest_data.py
-Location: src/infrastructure/scripts/ingest_data.py
-"""
+"""Ingest local files into the RAG system via the ingestion use case."""
 import logging
 import sys
 import os
@@ -28,7 +25,6 @@ if not data_dir_env:
 
 DATA_DIR = Path(data_dir_env)
 
-# Si chemin relatif → on le rattache au project root
 if not DATA_DIR.is_absolute():
     DATA_DIR = PROJECT_ROOT / DATA_DIR
 
@@ -36,17 +32,20 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 
 
 def _collect_files(data_dir: Path) -> list[Path]:
+    """Collect supported files from a directory.
+
+    :param data_dir: Directory containing candidate files.
+    :return: List of supported file paths.
+    """
     if not data_dir.exists():
         logger.error("Data directory not found: %s", data_dir)
         sys.exit(1)
 
     all_files = [f for f in sorted(data_dir.iterdir()) if f.is_file()]
 
-    # Séparer fichiers supportés et non supportés
     supported = [f for f in all_files if f.suffix.lower() in SUPPORTED_EXTENSIONS]
     unsupported = [f for f in all_files if f.suffix.lower() not in SUPPORTED_EXTENSIONS]
 
-    # Signaler les fichiers ignorés
     if unsupported:
         logger.warning("Skipped unsupported files:")
         for f in unsupported:
@@ -60,6 +59,12 @@ def _collect_files(data_dir: Path) -> list[Path]:
 
 
 async def _ingest_file(ingest_use_case, file_path: Path) -> bool:
+    """Ingest a single file using the provided use case.
+
+    :param ingest_use_case: Ingestion use case instance.
+    :param file_path: Path of the file to ingest.
+    :return: True when ingestion succeeds, False otherwise.
+    """
     try:
         await ingest_use_case.ingest(str(file_path))
         logger.info("%s - ingested successfully", file_path.name)
@@ -73,6 +78,10 @@ async def _ingest_file(ingest_use_case, file_path: Path) -> bool:
 
 
 async def main() -> None:
+    """Run the ingestion script entry point.
+
+    :return: None.
+    """
     logger.info("  RAG Ingestion Script")
     logger.info("  Data directory : %s", DATA_DIR)
     logger.info("  Supported      : %s", ", ".join(sorted(SUPPORTED_EXTENSIONS)))

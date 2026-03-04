@@ -1,3 +1,5 @@
+"""FastAPI application factory for the RAG API."""
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +11,10 @@ from src.presentation.api.routers import ask_router, ingest_router, health_route
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    :return: Configured FastAPI application instance.
+    """
     app = FastAPI(
         title="RAG API",
         description="Retrieval-Augmented Generation API — ingest documents and answer questions.",
@@ -23,14 +29,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Container initialisé une fois au démarrage
     app.state.container = Container()
 
     app.add_exception_handler(AppException, FastAPIExceptionHandler.handle_app_exception)
     app.add_exception_handler(RequestValidationError, FastAPIExceptionHandler.handle_validation_exception)
     app.add_exception_handler(Exception, FastAPIExceptionHandler.handle_generic_exception)
 
-    # Routers
     app.include_router(ingest_router.router, prefix="/api/v1")
     app.include_router(ask_router.router, prefix="/api/v1")
     app.include_router(health_router.router)
