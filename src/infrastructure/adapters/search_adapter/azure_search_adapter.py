@@ -60,4 +60,8 @@ class AzureAISearchAdapter(VectorStorePort):
             - Relies on the repository to execute the search using Azure Cognitive Search.
             - The returned chunks include their content, metadata, and embeddings if stored.
         """
-        return self.repository.semantic_search(query_embedding, top_k)
+        result= self.repository.semantic_search(query_embedding, top_k)
+
+        logger.info("Semantic search returned %d chunks (top_k=%d)", len(results), top_k)
+
+        return result

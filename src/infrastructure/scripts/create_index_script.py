@@ -6,7 +6,15 @@ This script is responsible for creating or updating the Azure Cognitive Search i
 used by the RAG application. It utilizes the `AzureSearchClient` to configure the index
 with vector search and semantic search capabilities.
 """
+import logging
+
+from azure.core.exceptions import ResourceNotFoundError
+
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -22,10 +30,18 @@ def main():
     """
     try:
         client = AzureSearchClient()
-        client.index_client.delete_index(client.index_name)
+        logger.info("AzureSearchClient initialized.")
+
+        try:
+            client.index_client.delete_index(client.index_name)
+            logger.info("Existing index '%s' deleted.", client.index_name)
+        except ResourceNotFoundError:
+            logger.info("Index '%s' does not exist, nothing to delete.", client.index_name)
+
+        logger.info("Azure Search index '%s' created or updated successfully.", client.index_name)
         index = client.create_index()
     except Exception as e:
-        print("Failed to create Azure Search index")
+        logger.exception("Failed to create or update Azure Search index: %s", str(e))
         raise e
 
 

@@ -1,4 +1,11 @@
+import logging
 import re
+
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
+
 
 class LlamaOcrParser:
     """Extraction et parsing du markdown / tables HTML en Markdown."""
@@ -33,6 +40,7 @@ class LlamaOcrParser:
             elif isinstance(obj, str) and obj.strip():
                 return obj.strip()
 
+        logger.warning("No markdown or text content found in Llama response")
         return ""
 
     @staticmethod
@@ -41,11 +49,17 @@ class LlamaOcrParser:
         matches = list(pattern.finditer(raw_md))
 
         if not matches:
+            logger.info("No mermaid blocks found in raw markdown")
             return "", raw_md.strip(), ""
 
         workflow = "\n\n".join([m.group(1).strip() for m in matches])
         pre_graph = raw_md[: matches[0].start()].strip()
         post_graph = raw_md[matches[-1].end() :].strip()
+
+        logger.info(
+            "Mermaid blocks extracted: %d blocks, workflow length=%d",
+            len(matches), len(workflow)
+        )
         return workflow, pre_graph, post_graph
 
     @staticmethod

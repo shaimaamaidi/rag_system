@@ -1,7 +1,9 @@
 """
 Module containing the RAGService class.
-Provides a services to answer questions using a Retrieval-Augmented Generation (RAG) pipeline.
+Provides a service to answer questions using a Retrieval-Augmented Generation (RAG) pipeline.
 """
+
+import logging
 from typing import List
 
 from src.domain.exceptions.answer_generation_exception import AnswerGenerationException
@@ -12,13 +14,17 @@ from src.domain.ports.input.ask_question_port import AskQuestionPort
 from src.domain.ports.output.embedding_port import EmbeddingPort
 from src.domain.ports.output.answer_generator_port import AnswerGeneratorPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class AnswerQuestionService(AskQuestionPort):
     """
     Business services to answer questions using a Retrieval-Augmented Generation (RAG) approach.
 
-    This services uses:
+    This service uses:
     - An embedding model to convert questions into vector representations.
     - A vector store to retrieve relevant chunks of information.
     - An answer generator to produce answers based on the retrieved context.
@@ -29,7 +35,6 @@ class AnswerQuestionService(AskQuestionPort):
         embedding_model: EmbeddingPort,
         vector_store: VectorStorePort,
         answer_generator: AnswerGeneratorPort,
-
     ):
         """
         Initialize the RAG services with the required components.
@@ -42,43 +47,52 @@ class AnswerQuestionService(AskQuestionPort):
         self.embedding = embedding_model
         self.vector_store = vector_store
         self.answer_generator = answer_generator
+        logger.info("AnswerQuestionService initialized with embedding, vector store, and answer generator")
 
     def execute(self, question: str) -> str:
         if not question or not question.strip():
-            raise QuestionEmptyException(
-                message="Question cannot be empty",
-            )
+            logger.warning("Empty question received")
+            raise QuestionEmptyException(message="Question cannot be empty")
 
         try:
             question_clean = question.strip()
+            logger.info(f"Generating embedding for question: {question_clean}")
             question_embedding = self.embedding.get_embedding_vector(question_clean)
+            logger.info("Question embedding generated successfully")
         except AppException:
             raise
         except Exception as e:
+            logger.exception("Failed to embed question")
             raise AnswerGenerationException(
                 message=f"Failed to embed question: {str(e)}",
             ) from e
 
         try:
-            chunks = self.vector_store.search(question_embedding.vector, top_k = 14)
+            logger.info("Searching for relevant chunks in vector store")
+            chunks = self.vector_store.search(question_embedding.vector, top_k=14)
+            logger.info(f"Retrieved {len(chunks)} chunks from vector store")
         except AppException:
             raise
         except Exception as e:
+            logger.exception("Failed to retrieve chunks")
             raise AnswerGenerationException(
                 message=f"Failed to retrieve chunks: {str(e)}",
             ) from e
 
         if not chunks:
-            raise AnswerGenerationException(
-                message="No relevant chunks found for this question",
-            )
+            logger.warning("No relevant chunks found for this question")
+            raise AnswerGenerationException(message="No relevant chunks found for this question")
 
         try:
             context = AnswerQuestionService._get_context_from_chunks(chunks)
-            return self.answer_generator.generate_answer(context, question_clean)
+            logger.info("Generating answer from retrieved context")
+            answer = self.answer_generator.generate_answer(context, question_clean)
+            logger.info("Answer generated successfully")
+            return answer
         except AppException:
             raise
         except Exception as e:
+            logger.exception("Failed to generate answer")
             raise AnswerGenerationException(
                 message=f"Failed to generate answer: {str(e)}",
             ) from e
@@ -112,4 +126,5 @@ class AnswerQuestionService(AskQuestionPort):
                 context_list.append(entry)
                 seen_paragraphs.add(chunk.paragraph_id)
 
+        logger.info(f"Context assembled from {len(context_list)} chunks")
         return "\n\n".join(context_list)

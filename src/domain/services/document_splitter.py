@@ -1,68 +1,31 @@
-"""
-DocumentSplitter: Reads a structured JSON document and returns a list of Paragraph objects.
-
-RULES APPLIED:
-1. Pages before the first heading → each page becomes its own Paragraph(heading=None)
-2. If two successive headings have fewer than 1 non-empty line between them,
-   the second heading is merged into the first paragraph's text.
-   ⚠ Skipped for pages with content_type == "article"
-3. If 3+ successive headings each have < 1 line between them, they all collapse
-   into one paragraph under the first heading.
-   ⚠ Skipped for pages with content_type == "article"
-4. If a heading's associated text has <= 2 sentences AND it is not the first heading,
-   it is merged into the preceding paragraph as text instead of starting a new paragraph.
-   ⚠ Skipped for pages with content_type == "article"
-5. Workflow pages (content_type == "workflow") → new Paragraph with heading = workflow_title
-   extracted from the embedded JSON. Any in-progress paragraph is finalized first.
-6. A page with 1–4 non-empty lines is considered a "title page". Its content becomes
-   the persistent `title` of ALL subsequent paragraphs until a NEW title page is found.
-   If two (or more) consecutive title pages appear, only the LAST one becomes the active
-   title — the earlier ones are silently discarded (no paragraph is created for them).
-   If no title page precedes a paragraph, title is None.
-"""
+import logging
 import re
 from typing import Any, Optional
 
-from src.domain.services.document_helpers import count_lines, count_sentences, normalize_heading, is_article_page, is_workflow_page, \
-    remove_preface_line, workflow_title, extract_preface_heading, page_table_metadata, is_title_page
+from src.domain.services.document_helpers import (
+    count_lines, count_sentences, normalize_heading,
+    is_article_page, is_workflow_page, remove_preface_line,
+    workflow_title, extract_preface_heading, page_table_metadata,
+    is_title_page, count_md_tables, filter_metadata_for_segment
+)
 from src.domain.factories.paragraph_factory import ParagraphFactory
 from src.domain.models.page_content_model import PageContent
 from src.domain.models.paragraph_model import Paragraph
 from src.domain.models.section_heading_model import SectionHeading
+from src.infrastructure.adapters.config.logger import setup_logger
 
-
-def _count_md_tables(text: str) -> int:
-    """Compte le nombre de tables Markdown dans un segment de texte."""
-    if not text:
-        return 0
-    matches = re.findall(r"(?:\|.*\|[ \t]*(?:\n|$))+", text)
-    return len(matches)
-
-
-def _filter_metadata_for_segment(text: str, all_metadata: list[Any]) -> list[Any]:
-    """
-    Retourne les entrées de table_metadata qui correspondent aux tables
-    réellement présentes dans ce segment de texte.
-
-    Stratégie :
-    - On compte le nombre de tables Markdown dans le segment.
-    - On retourne autant d'entrées depuis all_metadata (dans l'ordre).
-    - Les entrées déjà consommées sont retirées de all_metadata (mutation in-place).
-    """
-    n = _count_md_tables(text)
-    if n == 0 or not all_metadata:
-        return []
-    take = min(n, len(all_metadata))
-    result = all_metadata[:take]
-    del all_metadata[:take]
-    return result
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class DocumentSplitter:
 
     @staticmethod
     def split(name_doc, pages, headings) -> list[Paragraph]:
-        return DocumentSplitter._build_paragraphs(pages, headings, name_doc)
+        logger.info(f"Starting DocumentSplitter for '{name_doc}' with {len(pages)} pages and {len(headings)} headings")
+        paragraphs = DocumentSplitter._build_paragraphs(pages, headings, name_doc)
+        logger.info(f"DocumentSplitter finished: {len(paragraphs)} paragraphs created")
+        return paragraphs
 
     @staticmethod
     def _build_paragraphs(
@@ -92,7 +55,11 @@ class DocumentSplitter:
         pending_title:   Optional[str] = None
         pending_is_article: bool       = False
 
-        events = DocumentSplitter._build_events(pages, headings_by_page)
+        try:
+            events = DocumentSplitter._build_events(pages, headings_by_page)
+        except Exception as e:
+            logger.error(f"Failed to build events for document '{name_doc}': {e}")
+            return paragraphs
 
         # ── closures ──────────────────────────────────────────────────────
 
@@ -151,6 +118,8 @@ class DocumentSplitter:
                     is_article     = current_is_article,
                     table_metadata = current_table_metadata.copy(),
                 ))
+                logger.info(f"Paragraph created: title='{active_title}', sub_title='{current_heading}', "
+                            f"text_length={len(text)} chars, tables={current_has_table}")
                 current_heading    = None
                 current_has_table  = False
                 current_is_article = False
@@ -241,7 +210,10 @@ class DocumentSplitter:
 
             elif event_type == "workflow":
                 _flush_pending_title()
-                workflow_title, page_text, has_tbl, table_metadata = payload
+                workflow_title_val, page_text, has_tbl, table_metadata = payload
+                if not workflow_title_val:
+                    logger.warning(f"Workflow page detected but no title found: page_text='{page_text[:50]}...'")
+                    workflow_title_val = "Unknown workflow"
                 if pending_headings:
                     if has_enough_content_in_pending():
                         commit_pending_as_new()
@@ -251,7 +223,7 @@ class DocumentSplitter:
                 text = page_text.strip()
                 paragraphs.append(ParagraphFactory.create_workflow(
                     active_title   = active_title,
-                    workflow_title = workflow_title,
+                    workflow_title = workflow_title_val,
                     name_doc       = name_doc,
                     text           = text,
                     has_table      = has_tbl,
@@ -298,9 +270,13 @@ class DocumentSplitter:
             is_article = is_article_page(page)
 
             if is_workflow_page(page):
-                wf_title        = workflow_title(page)
+                try:
+                    wf_title_val = workflow_title(page)
+                except Exception as e:
+                    logger.error(f"Failed to extract workflow title on page {page_num}: {e}")
+                    wf_title_val = "Unknown workflow"
                 preface_heading = extract_preface_heading(page_text, heading_map)
-                heading_value   = preface_heading or wf_title
+                heading_value   = preface_heading or wf_title_val
                 if preface_heading:
                     page_text = remove_preface_line(page_text, preface_heading)
                 events.append(("workflow", (heading_value, page_text, has_tbl, page_table_metadata(page))))
@@ -327,10 +303,6 @@ class DocumentSplitter:
 
             first_heading_seen = True
             remaining_text     = page_text
-
-            # ── pool de métadonnées à distribuer entre les segments ──────
-            # On travaille sur une copie mutable : _filter_metadata_for_segment
-            # consomme les entrées au fur et à mesure (pop depuis le début).
             meta_pool = list(page_table_metadata(page))
 
             for h in page_headings:
@@ -339,8 +311,8 @@ class DocumentSplitter:
                 if idx != -1:
                     before = remaining_text[:idx].strip()
                     if before:
-                        seg_meta = _filter_metadata_for_segment(before, meta_pool)
-                        seg_tbl  = bool(seg_meta) or (has_tbl and _count_md_tables(before) > 0)
+                        seg_meta = filter_metadata_for_segment(before, meta_pool)
+                        seg_tbl  = bool(seg_meta) or (has_tbl and count_md_tables(before) > 0)
                         events.append(("text", (before, seg_tbl, seg_meta)))
                     events.append(("heading", (h_content, is_article)))
                     remaining_text = remaining_text[idx + len(h_content):].strip()
@@ -348,8 +320,8 @@ class DocumentSplitter:
                     events.append(("heading", (h_content, is_article)))
 
             if remaining_text:
-                seg_meta = _filter_metadata_for_segment(remaining_text, meta_pool)
-                seg_tbl  = bool(seg_meta) or (has_tbl and _count_md_tables(remaining_text) > 0)
+                seg_meta = filter_metadata_for_segment(remaining_text, meta_pool)
+                seg_tbl  = bool(seg_meta) or (has_tbl and count_md_tables(remaining_text) > 0)
                 events.append(("text", (remaining_text, seg_tbl, seg_meta)))
 
         return events

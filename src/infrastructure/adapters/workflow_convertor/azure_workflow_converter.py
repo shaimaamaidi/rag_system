@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -9,6 +10,10 @@ from src.domain.exceptions.workflow_converter_config_exception import WorkflowCo
 from src.domain.models.workflow_model import WorkflowResult
 from src.domain.ports.input.workflow_converter_port import WorkflowConverterPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class AzureWorkflowConverter(WorkflowConverterPort):
@@ -32,12 +37,16 @@ class AzureWorkflowConverter(WorkflowConverterPort):
             api_version=api_version,
         )
         self.prompt_provider = prompt_provider
+        logger.info("AzureWorkflowConverter initialized with deployment: %s", self._deployment)
 
     def convert(self, mermaid_text: str) -> WorkflowResult:
         if not mermaid_text or not mermaid_text.strip():
             raise WorkflowConversionException(
                 message="Mermaid text cannot be empty",
             )
+
+        logger.info("Starting workflow conversion for Mermaid text (length=%d)", len(mermaid_text))
+
         try:
             response = self._client.chat.completions.create(
                 model=self._deployment,
@@ -55,8 +64,10 @@ class AzureWorkflowConverter(WorkflowConverterPort):
                 ],
             )
             raw_json = response.choices[0].message.content
+            logger.info("Workflow conversion succeeded (output length=%d)", len(str(raw_json)))
             return WorkflowResult(raw_json=raw_json)
         except Exception as e:
+            logger.error("Azure OpenAI workflow conversion failed: %s", e)
             raise WorkflowConversionException(
                 message=f"Azure OpenAI workflow conversion failed: {str(e)}",
             ) from e

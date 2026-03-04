@@ -4,11 +4,18 @@ Description:
     Centralized exception handling for FastAPI.
     Handles AppException, validation errors, and generic unhandled exceptions.
 """
+import logging
+
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.domain.exceptions.app_exception import AppException
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
+
 
 # HTTP status codes that indicate config/infra errors (always 5xx)
 _CONFIG_CODES = {
@@ -39,6 +46,10 @@ class FastAPIExceptionHandler:
         Handles all AppException subclasses.
         Uses exc.http_status directly — set per exception class.
         """
+        if exc.code in _CONFIG_CODES:
+            logger.error("Configuration/Infrastructure Error [%s]: %s", exc.code, exc.message, exc_info=exc)
+        else:
+            logger.warning("Application Error [%s]: %s", exc.code, exc.message)
         return JSONResponse(
             status_code=exc.http_status,
             content={
@@ -54,6 +65,7 @@ class FastAPIExceptionHandler:
         """
         Handles FastAPI request validation errors (422).
         """
+        logger.info("Validation Error on request %s: %s", request.url.path, exc.errors())
         return JSONResponse(
             status_code=422,
             content={
@@ -70,6 +82,7 @@ class FastAPIExceptionHandler:
         """
         Handles all unhandled exceptions (500).
         """
+        logger.error("Unhandled exception on request %s: %s", request.url.path, str(exc), exc_info=exc)
         return JSONResponse(
             status_code=500,
             content={

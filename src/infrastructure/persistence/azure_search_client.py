@@ -1,3 +1,4 @@
+import logging
 import os
 from dotenv import load_dotenv
 from azure.core.credentials import AzureKeyCredential
@@ -19,6 +20,10 @@ from azure.search.documents.indexes.models import (
 
 from src.domain.exceptions.azure_search_config_exception import AzureSearchConfigException
 from src.domain.exceptions.azure_search_index_exception import AzureSearchIndexException
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class AzureSearchClient:
@@ -43,6 +48,7 @@ class AzureSearchClient:
         self.embedding_dimensions = int(os.getenv("AZURE_EMBEDDING_DIMENSIONS", 3072))
 
         if not all([self.endpoint, self.index_name, self.api_key]):
+            logger.error("Missing Azure Search environment variables.")
             raise AzureSearchConfigException(
                 message="Missing Azure AI Search environment variables: "
                         "AZURE_AI_SEARCH_ENDPOINT, AZURE_AI_SEARCH_INDEX_NAME, AZURE_AI_SEARCH_API_KEY"
@@ -53,6 +59,7 @@ class AzureSearchClient:
             endpoint=self.endpoint,
             credential=self.credential,
         )
+        logger.info("AzureSearchClient initialized.")
 
     # ──────────────────────────────────────────
     # Index creation
@@ -75,6 +82,7 @@ class AzureSearchClient:
             - embedding    → Chunk.embedding        (vector, HNSW)
         """
         try:
+            logger.info("Creating/updating Azure Search index.")
             fields = [
                 # ── identifiers ──────────────────────────────────────────────
                 SimpleField(
@@ -191,8 +199,11 @@ class AzureSearchClient:
             )
 
             result = self.index_client.create_or_update_index(search_index)
+            logger.info("Azure Search index created/updated successfully")
+
             return result
         except Exception as e:
+            logger.exception("Failed to create/update Azure Search index '%s'", self.index_name)
             raise AzureSearchIndexException(
                 message=f"Failed to create or update Azure Search index '{self.index_name}': {str(e)}",
             ) from e

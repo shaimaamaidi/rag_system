@@ -1,9 +1,15 @@
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import yaml
-from jinja2 import Template, Environment
+import re
+from jinja2 import Environment
 
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class PromptyLoader(PromptProviderPort):
@@ -18,6 +24,7 @@ class PromptyLoader(PromptProviderPort):
 
         if not self.templates_dir.exists():
             raise ValueError(f"Templates directory not found: {self.templates_dir}")
+        logger.info("PromptyLoader initialized with templates_dir: %s", self.templates_dir)
 
     @staticmethod
     def _parse_prompty_file(file_path: Path) -> Dict[str, Any]:
@@ -40,6 +47,7 @@ class PromptyLoader(PromptProviderPort):
         file_path = self.templates_dir / f"{prompt_name}.prompty"
 
         if not file_path.exists():
+            logger.error("Prompt file not found: %s", file_path)
             raise FileNotFoundError(f"Prompt file not found: {file_path}")
 
         prompty_data = PromptyLoader._parse_prompty_file(file_path)
@@ -51,21 +59,10 @@ class PromptyLoader(PromptProviderPort):
             provided_inputs = set(kwargs.keys())
             missing_inputs = required_inputs - provided_inputs
             if missing_inputs:
+                logger.error("Missing inputs for prompt '%s': %s", prompt_name, missing_inputs)
                 raise ValueError(
                     f"Missing required inputs for {prompt_name}: {missing_inputs}"
                 )
-
-        # ── FIX : utiliser un Environment Jinja2 avec des délimiteurs custom ──
-        # Le problème : les accolades {} dans le contenu mermaid (ex: Decision{...})
-        # sont interprétées par Jinja2 comme des blocs de template et effacées
-        # avant d'arriver au LLM → le converter reçoit un texte vide → retourne
-        # lanes:[], nodes:[], edges:[].
-        #
-        # Solution : changer les délimiteurs Jinja2 pour utiliser [[ ]] au lieu
-        # de {{ }} — les accolades mermaid passent désormais sans modification.
-        # Les templates .prompty doivent utiliser {{ var }} (converti ci-dessous)
-        # ou directement [[ var ]] dans les nouveaux fichiers.
-        # ──────────────────────────────────────────────────────────────────────
         env = Environment(
             variable_start_string="[[",
             variable_end_string="]]",
@@ -74,10 +71,6 @@ class PromptyLoader(PromptProviderPort):
             comment_start_string="[#",
             comment_end_string="#]",
         )
-
-        # Convertir l'ancienne syntaxe {{ var }} → [[ var ]] pour compatibilité
-        # avec les templates existants qui utilisent encore {{ }}
-        import re
         prompt_content = re.sub(
             r"\{\{\s*(\w+)\s*\}\}",
             r"[[ \1 ]]",

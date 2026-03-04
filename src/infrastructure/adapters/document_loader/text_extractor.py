@@ -1,7 +1,11 @@
-# src/infrastructure/adapters/document_loader/text_extractor.py
-
+import logging
 from typing import Set, Optional
 from azure.ai.documentintelligence.models import ParagraphRole
+
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class TextExtractor:
@@ -9,6 +13,8 @@ class TextExtractor:
     @staticmethod
     def extract_text_page(page, az_result, header_contents: Set[str]) -> dict:
         """Extraction complète : texte + tables + metadata (depuis Azure DI)."""
+        logger.info("Extraction de la page %s démarrée", page.page_number)
+
         page_num = page.page_number
 
         # ── Collecter les tables de cette page ──────────────────────────
@@ -39,6 +45,7 @@ class TextExtractor:
                     break  # Une seule entrée par table par page — évite les doublons
 
         has_table = bool(page_tables)
+        logger.info("Page %s : %d table(s) détectée(s)", page_num, len(page_tables))
         table_boxes = [t["bbox"] for t in page_tables]
 
         tables_metadata = [
@@ -113,6 +120,7 @@ class TextExtractor:
 
         segments.sort(key=lambda s: s[0])
         text = "\n\n".join(c for _, c in segments if c.strip())
+        logger.info("Page %s : extraction terminée avec %d segments", page_num, len(segments))
 
         return {
             "type": "text",

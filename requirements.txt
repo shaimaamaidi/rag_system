@@ -17,3 +17,4 @@ pywin32
 python-pptx
 python-docx
 reportlab
+httpx

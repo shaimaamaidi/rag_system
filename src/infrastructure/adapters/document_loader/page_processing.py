@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import fitz
@@ -5,9 +6,13 @@ import fitz
 from src.domain.exceptions.page_image_extraction_exception import PageImageExtractionException
 from src.domain.exceptions.workflow_conversion_exception import WorkflowConversionException
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.infrastructure.adapters.document_loader.text_extractor import TextExtractor
 from src.infrastructure.adapters.llama_ocr.llama_ocr_processor import LlamaOcrAdapter
 from src.infrastructure.adapters.workflow_convertor.azure_workflow_converter import AzureWorkflowConverter
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class PageProcessor:
@@ -24,6 +29,7 @@ class PageProcessor:
         tmp_dir = "tmp_images"
         os.makedirs(tmp_dir, exist_ok=True)
         image_path = os.path.join(tmp_dir, f"page_{page.page_number}.png")
+        logger.info(f"Processing PDF page {page.page_number}: {file_path} → {image_path}")
 
         # PDF → image
         try:
@@ -38,7 +44,10 @@ class PageProcessor:
             pix = pdf_page.get_pixmap(matrix=mat)
             pix.save(image_path)
             doc.close()
+            logger.info(f"Extracted image for page {page.page_number}")
+
         except Exception as e:
+            logger.error(f"Failed to extract image from page {page.page_number}: {e}")
             raise PageImageExtractionException(
                 message=f"Failed to extract image from page {page.page_number}: {str(e)}"
             ) from e
@@ -58,7 +67,10 @@ class PageProcessor:
         Returns:
             dict avec les clés : type, text, has_table, tables_metadata.
         """
+        logger.info(f"Processing PPTX slide {slide_number}: {image_path}")
+
         if not os.path.exists(image_path):
+            logger.error(f"Slide image not found for slide {slide_number}: {image_path}")
             raise PageImageExtractionException(
                 message=f"Slide image not found for slide {slide_number}: {image_path}"
             )
@@ -76,11 +88,14 @@ class PageProcessor:
             image_path: Chemin de l'image à traiter.
             cleanup: Si True, supprime l'image après traitement.
         """
+        logger.info(f"Running Llama OCR pipeline on {image_path}")
+
         try:
             ocr_result = await self._llama.process(image_path)
         finally:
             if cleanup and os.path.exists(image_path):
                 os.remove(image_path)
+                logger.info(f"Removed temporary image {image_path}")
 
         workflow = ocr_result.workflow
         pre_graph_content = ocr_result.pre_graph_content
@@ -95,10 +110,14 @@ class PageProcessor:
 
         if workflow.strip():
             content_type = "workflow"
+            logger.info(f"Found workflow content in image {image_path}, converting with Azure Workflow")
+
             try:
                 result = self._converter.convert(workflow)
                 parts.append(json.dumps(result.raw_json, ensure_ascii=False, indent=2))
+                logger.info(f"Workflow conversion succeeded for {image_path}")
             except Exception as e:
+                logger.error(f"Workflow conversion failed for {image_path}: {e}")
                 raise WorkflowConversionException(
                     message=f"Azure GPT-4o workflow conversion failed: {str(e)}",
                     code="WORKFLOW_CONVERSION_ERROR",
@@ -110,10 +129,8 @@ class PageProcessor:
 
         full_text = "\n\n".join(parts)
 
-        # ── Construire tables_metadata depuis le texte OCR ──────────────
-        # y_position est None : les coordonnées ne sont pas disponibles
-        # depuis un résultat OCR pur (contrairement au pipeline Azure DI).
         tables_metadata = TextExtractor.extract_tables_metadata_from_text(full_text)
+        logger.info(f"Finished processing image {image_path}, content_type={content_type}, tables={len(tables_metadata)}")
 
         return {
             "type":            content_type,

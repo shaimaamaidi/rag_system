@@ -1,15 +1,20 @@
+import logging
 import statistics
-
 from azure.ai.documentintelligence.models import DocumentPage
 
 from src.domain.models.classification_thresholds_model import ClassificationThresholds
 from src.domain.ports.input.page_classifier_port import PageClassifierPort, PageLabel
+from src.infrastructure.adapters.config.logger import setup_logger
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class PageClassifier(PageClassifierPort):
 
     def __init__(self):
         self.thresholds = ClassificationThresholds()
+        logger.info("PageClassifier initialized with thresholds: %s", self.thresholds)
 
     def classify(self, page: DocumentPage, has_keyword: bool) -> PageLabel:
         metrics = PageClassifier._compute_metrics(page)
@@ -18,7 +23,13 @@ class PageClassifier(PageClassifierPort):
         ystd = metrics.get("y_std_gaps")
         t = self.thresholds
 
+        logger.info(
+            "Classifying page %s: metrics=%s, has_keyword=%s",
+            getattr(page, "page_number", None), metrics, has_keyword
+        )
+
         if slr is None and awpl is None and ystd is None:
+            logger.info("No metrics available, defaulting to 'text'")
             return "text"
 
         if (
@@ -26,10 +37,14 @@ class PageClassifier(PageClassifierPort):
             awpl is not None and awpl <= t.avg_words_per_line_max and
             ystd is not None and ystd <= t.y_std_gaps_max
         ):
-            return "workflow"
-        if has_keyword:
+            logger.info("Metrics within thresholds, classified as 'workflow'")
             return "workflow"
 
+        if has_keyword:
+            logger.info("Keyword detected, classified as 'workflow'")
+            return "workflow"
+
+        logger.info("Defaulting to 'text'")
         return "text"
 
     @staticmethod
@@ -57,11 +72,14 @@ class PageClassifier(PageClassifierPort):
         gaps = [y_centers[i + 1] - y_centers[i] for i in range(len(y_centers) - 1)]
         y_std_gaps = statistics.stdev(gaps) if len(gaps) > 1 else None
 
-        return {
+        metrics = {
             "short_line_ratio": round(short_line_ratio, 4),
             "avg_words_per_line": round(avg_words_per_line, 4),
             "y_std_gaps": round(y_std_gaps, 4) if y_std_gaps is not None else None,
         }
+
+        logger.debug("Computed metrics for page %s: %s", getattr(page, "page_number", None), metrics)
+        return metrics
 
     @staticmethod
     def _has_key_word_in_header_table(page, result) -> bool:
@@ -74,7 +92,6 @@ class PageClassifier(PageClassifierPort):
         for table in result.tables or []:
             for region in table.bounding_regions:
                 if region.page_number == page.page_number:
-                    # Vérifier seulement la première ligne
                     first_row_cells = [
                         cell.content for cell in table.cells
                         if cell.row_index == 0
@@ -83,6 +100,11 @@ class PageClassifier(PageClassifierPort):
                         cell_text = cell_content.replace(" ", "").strip()
                         for kw in workflow_keywords:
                             if kw in cell_text:
+                                logger.info(
+                                    "Keyword '%s' found in table header on page %s",
+                                    kw, page.page_number
+                                )
                                 return True
 
+        logger.debug("No workflow keyword found in table header for page %s", page.page_number)
         return False

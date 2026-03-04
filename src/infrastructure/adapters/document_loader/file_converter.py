@@ -12,6 +12,7 @@ Dépendances :
     Linux/macOS : apt install libreoffice  /  brew install libreoffice
     Fallback PDF→PNG : pip install pymupdf
 """
+import logging
 import platform
 import shutil
 import subprocess
@@ -20,9 +21,14 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import List
+import win32com.client
+import fitz
 
 from src.domain.exceptions.document_loader_exception import DocumentLoaderException
+from src.infrastructure.adapters.config.logger import setup_logger
 
+setup_logger()
+logger = logging.getLogger(__name__)
 
 CONVERTED_DOCS_DIR = Path(__file__).resolve().parents[4] / "converted_docs"
 
@@ -35,6 +41,8 @@ class FileConverter:
     def __init__(self, output_dir: Path = CONVERTED_DOCS_DIR):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"FileConverter initialized with output directory: {self.output_dir}")
+
 
     # ------------------------------------------------------------------ #
     #  Context manager — .docx / .pptx → PDF                             #
@@ -45,7 +53,7 @@ class FileConverter:
         if ext not in self.CONVERTIBLE_EXTENSIONS:
             yield file_path
             return
-        pdf_path = self._convert_to_pdf(file_path)
+        pdf_path = self.convert_to_pdf(file_path)
         yield pdf_path
 
     # ------------------------------------------------------------------ #
@@ -63,6 +71,7 @@ class FileConverter:
 
         slide_dir = self.output_dir / pptx_path_obj.stem
         slide_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Converting PPTX to images: {pptx_path} → {slide_dir}")
 
         if platform.system() == "Windows":
             return self._pptx_to_images_windows(
@@ -78,6 +87,8 @@ class FileConverter:
     # ------------------------------------------------------------------ #
     def convert_to_pdf(self, file_path: str) -> str:
         ext = Path(file_path).suffix.lower()
+        logger.info(f"Converting {file_path} to PDF")
+
         if ext == ".docx":
             if platform.system() == "Windows":
                 return self._docx_to_pdf_word_com(file_path)
@@ -96,19 +107,12 @@ class FileConverter:
         Word gère nativement l'arabe, le RTL et toutes les polices — aucune
         dégradation du texte, contrairement à ReportLab.
         """
-        try:
-            import win32com.client
-        except ImportError:
-            raise DocumentLoaderException(
-                "Le package 'pywin32' est requis sur Windows. "
-                "Installez-le avec : pip install pywin32"
-            )
-
         file_path_obj = Path(file_path)
         if not file_path_obj.exists():
             raise DocumentLoaderException(f"Fichier introuvable : {file_path}")
 
         dest_pdf = self.output_dir / f"{file_path_obj.stem}.pdf"
+        logger.info(f"Converting DOCX to PDF via Word COM: {file_path} → {dest_pdf}")
 
         word = None
         doc = None
@@ -121,10 +125,12 @@ class FileConverter:
                 ReadOnly=True,
             )
             doc.SaveAs2(str(dest_pdf.resolve()), FileFormat=17)
+            logger.info(f"Successfully converted DOCX to PDF: {dest_pdf}")
 
         except DocumentLoaderException:
             raise
         except Exception as e:
+            logger.error(f"Failed Word COM export for {file_path_obj.name}: {e}")
             raise DocumentLoaderException(
                 f"Échec export Word COM ({file_path_obj.name}) : {e}"
             ) from e
@@ -141,6 +147,7 @@ class FileConverter:
                     pass
 
         if not dest_pdf.exists():
+            logger.error(f"PDF not found after conversion: {dest_pdf}")
             raise DocumentLoaderException(
                 f"PDF introuvable après conversion Word COM : {dest_pdf}"
             )
@@ -153,7 +160,10 @@ class FileConverter:
     def _to_pdf_libreoffice(self, file_path: str) -> str:
         """Convertit DOCX ou PPTX en PDF via LibreOffice headless."""
         file_path_obj = Path(file_path)
+        logger.info(f"Converting {file_path} to PDF via LibreOffice headless")
+
         if not file_path_obj.exists():
+            logger.error(f"LibreOffice →PDF failed: {file_path}")
             raise DocumentLoaderException(f"Fichier introuvable : {file_path}")
 
         libreoffice_cmd = self._find_libreoffice()
@@ -186,6 +196,7 @@ class FileConverter:
 
             dest_pdf = self.output_dir / f"{file_path_obj.stem}.pdf"
             shutil.copy2(str(tmp_pdfs[0]), str(dest_pdf))
+            logger.info(f"LibreOffice conversion succeeded: {dest_pdf}")
 
         return str(dest_pdf)
 
@@ -199,13 +210,7 @@ class FileConverter:
         width: int,
         height: int,
     ) -> List[str]:
-        try:
-            import win32com.client
-        except ImportError:
-            raise DocumentLoaderException(
-                "Le package 'pywin32' est requis sur Windows. "
-                "Installez-le avec : pip install pywin32"
-            )
+        logger.info("Starting PPTX → PNG conversion on Windows: %s", pptx_path)
 
         powerpoint = None
         prs = None
@@ -235,10 +240,12 @@ class FileConverter:
                 output_path = str((slide_dir / f"slide_{i:03d}.png").resolve())
                 prs.Slides(i).Export(output_path, "PNG", width, height)
                 image_paths.append(output_path)
+                logger.info("Exported slide %d → %s", i, output_path)
 
         except DocumentLoaderException:
             raise
         except Exception as e:
+            logger.error("Échec export PowerPoint COM (%s): %s", Path(pptx_path).name, e)
             raise DocumentLoaderException(
                 f"Échec export PowerPoint COM ({Path(pptx_path).name}) : {e}"
             ) from e
@@ -268,6 +275,8 @@ class FileConverter:
         pptx_path: str,
         slide_dir: Path,
     ) -> List[str]:
+        logger.info("Starting PPTX → PNG conversion via LibreOffice: %s", pptx_path)
+
         libreoffice_cmd = FileConverter._find_libreoffice()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -285,6 +294,7 @@ class FileConverter:
             )
 
             if result.returncode != 0:
+                logger.error("LibreOffice conversion failed: %s", result.stderr.strip())
                 raise DocumentLoaderException(
                     f"LibreOffice conversion failed : {result.stderr.strip()}"
                 )
@@ -297,11 +307,13 @@ class FileConverter:
                     dest = slide_dir / f"slide_{idx:03d}.png"
                     shutil.copy2(str(png), str(dest))
                     image_paths.append(str(dest))
+                    logger.info("Exported slide %d → %s", idx, dest)
                 return image_paths
 
             # Fallback : LibreOffice a produit un PDF → découpe avec fitz
             tmp_pdfs = list(Path(tmp_dir).glob("*.pdf"))
             if tmp_pdfs:
+                logger.warning("LibreOffice produced PDF instead of PNG, falling back to PyMuPDF")
                 return FileConverter._pdf_to_images_fitz(
                     str(tmp_pdfs[0]), slide_dir
                 )
@@ -313,13 +325,8 @@ class FileConverter:
     @staticmethod
     def _pdf_to_images_fitz(pdf_path: str, slide_dir: Path) -> List[str]:
         """Convertit un PDF en PNG par page via PyMuPDF."""
-        try:
-            import fitz
-        except ImportError:
-            raise DocumentLoaderException(
-                "PyMuPDF est requis pour le fallback PDF→PNG. "
-                "Installez-le avec : pip install pymupdf"
-            )
+
+        logger.info("Converting PDF → PNG via PyMuPDF: %s", pdf_path)
 
         doc = fitz.open(pdf_path)
         image_paths: List[str] = []
@@ -331,6 +338,7 @@ class FileConverter:
             output_path = slide_dir / f"slide_{page_num + 1:03d}.png"
             pix.save(str(output_path))
             image_paths.append(str(output_path))
+            logger.info("Exported PDF page %d → %s", page_num + 1, output_path)
 
         doc.close()
         return image_paths
@@ -350,6 +358,7 @@ class FileConverter:
         ]
         for cmd in candidates:
             if shutil.which(cmd):
+                logger.info("Found LibreOffice executable: %s", cmd)
                 return cmd
         raise DocumentLoaderException(
             "LibreOffice introuvable. "
@@ -371,13 +380,15 @@ class FileConverter:
         if file_path_obj.exists():
             try:
                 file_path_obj.unlink()
+                logger.info("Deleted converted file: %s", file_path_obj)
             except Exception as e:
-                print(f"⚠️ Impossible de supprimer {file_path_obj.name} : {e}")
+                logger.warning("Impossible de supprimer %s : %s", file_path_obj.name, e)
 
         # Supprimer le dossier de slides PNG si présent (même nom sans extension)
         slide_dir = self.output_dir / file_path_obj.stem
         if slide_dir.exists() and slide_dir.is_dir():
             try:
                 shutil.rmtree(slide_dir)
+                logger.info("Deleted slide directory: %s", slide_dir)
             except Exception as e:
-                print(f"⚠️ Impossible de supprimer le dossier {slide_dir.name} : {e}")
+                logger.warning("Impossible de supprimer le dossier %s : %s", slide_dir.name, e)

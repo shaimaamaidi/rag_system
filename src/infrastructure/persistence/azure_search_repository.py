@@ -21,22 +21,21 @@ Chunk schema (aligned with SmartChunker output):
     has_table       → has_table       (bool, filterable)
     table_metadata  → table_metadata  (List[str], searchable)
 """
-import json
-from dataclasses import asdict
+import logging
 from typing import List
 
 from azure.search.documents._generated.models import VectorizedQuery
-from pathlib import Path
 
 from src.domain.exceptions.azure_search_query_exception import AzureSearchQueryException
 from src.domain.exceptions.azure_search_upload_exception import AzureSearchUploadException
 from src.domain.exceptions.chunk_missing_embedding_exception import ChunkMissingEmbeddingException
 from src.domain.models.chunk_model import Chunk
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
 
-# ──────────────────────────────────────────────
-# Repository
-# ──────────────────────────────────────────────
+setup_logger()
+logger = logging.getLogger(__name__)
+
 
 class AzureSearchRepository:
     """
@@ -57,6 +56,7 @@ class AzureSearchRepository:
         """
         self.client = client
         self.search_client = self.client.get_search_client()
+        logger.info("AzureSearchRepository initialized.")
 
     # ── upload ────────────────────────────────
     def upload_chunks(self, chunks: List[Chunk]):
@@ -77,14 +77,17 @@ class AzureSearchRepository:
         documents = []
         for chunk in chunks:
             if chunk.embedding is None:
+                logger.error("Chunk '%s' has no embedding.", chunk.id)
                 raise ChunkMissingEmbeddingException(
                     message=f"Chunk '{chunk.id}' has no embedding. Generate embeddings before uploading.",
                 )
             documents.append(AzureSearchClient.chunk_to_document(chunk))
         try:
             result = self.search_client.upload_documents(documents)
+            logger.info("Uploaded %d chunks to Azure Search index.", len(chunks))
             return result
         except Exception as e:
+            logger.exception("Failed to upload chunks to Azure Search.")
             raise AzureSearchUploadException(
                 message=f"Failed to upload chunks to Azure Search: {str(e)}",
             ) from e
@@ -111,7 +114,7 @@ class AzureSearchRepository:
         """
         try:
 
-            # ── vector query ──────────────────────────────────────────────
+            logger.info("Performing semantic search ...")
             vector_query_obj = VectorizedQuery(
                 vector=vector_query,
                 k_nearest_neighbors=top_k,
@@ -155,11 +158,11 @@ class AzureSearchRepository:
                     embedding=None,
                 )
                 chunks.append(chunk)
-
+            logger.info("Semantic search returned %d results", len(chunks))
             return chunks
 
-
         except Exception as e:
+            logger.exception("Vector search failed in Azure Cognitive Search.")
             raise AzureSearchQueryException(
                 message=f"Vector search failed in Azure Cognitive Search: {str(e)}",
             ) from e

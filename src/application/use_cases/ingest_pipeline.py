@@ -4,8 +4,14 @@ This use case handles the ingestion of documents by delegating
 the process to the DocumentIngestionService.
 """
 
+import logging
+
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.domain.ports.input.ingest_documents_port import IngestDocumentsPort
 from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class IngestDocumentUseCase(IngestDocumentsPort):
@@ -24,6 +30,7 @@ class IngestDocumentUseCase(IngestDocumentsPort):
             ingestion_service (DocumentIngestionService): Service responsible for document ingestion.
         """
         self.ingestion_service = ingestion_service
+        logger.info("IngestDocumentUseCase initialized with DocumentIngestionService")
 
     async def ingest(self, documents_dir: str) -> None:
         """
@@ -35,4 +42,6 @@ class IngestDocumentUseCase(IngestDocumentsPort):
         Returns:
             None
         """
+        logger.info(f"Starting document ingestion from directory: {documents_dir}")
         await self.ingestion_service.ingest(documents_dir)
+        logger.info(f"Document ingestion completed for directory: {documents_dir}")

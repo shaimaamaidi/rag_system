@@ -1,8 +1,12 @@
+import logging
 import json
 import re
 from typing import Any, Optional
-
+from src.infrastructure.config.logger import setup_logger
 from src.domain.models.page_content_model import PageContent
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,11 +47,17 @@ def is_title_page(text: str) -> bool:
 
 
 def is_workflow_page(page: PageContent) -> bool:
-    return page.content_type.lower() == "workflow"
+    result = page.content_type.lower() == "workflow"
+    if result:
+        logger.info(f"Page {page.page_number}: detected as workflow page")
+    return result
 
 
 def is_article_page(page: PageContent) -> bool:
-    return page.content_type.lower() == "article"
+    result = page.content_type.lower() == "article"
+    if result:
+        logger.info(f"Page {page.page_number}: detected as article page")
+    return result
 
 
 def workflow_title(page: PageContent) -> Optional[str]:
@@ -55,6 +65,7 @@ def workflow_title(page: PageContent) -> Optional[str]:
     try:
         data = json.loads(text)
         if isinstance(data, dict) and "workflow_title" in data:
+            logger.info(f"Page {page.page_number}: workflow_title found via direct JSON")
             return data["workflow_title"]
     except Exception:
         pass
@@ -65,12 +76,16 @@ def workflow_title(page: PageContent) -> Optional[str]:
         inner = inner.replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\')
         data = json.loads(inner)
         if isinstance(data, dict) and "workflow_title" in data:
+            logger.info(f"Page {page.page_number}: workflow_title found via inner JSON")
             return data["workflow_title"]
     except Exception:
         pass
     match = re.search(r'workflow_title\\?"?\s*:\\?"?\s*\\?"([^"\\]+)', text)
     if match:
+        logger.info(f"Page {page.page_number}: workflow_title found via regex")
         return match.group(1).strip()
+
+    logger.info(f"Page {page.page_number}: no workflow_title found")
     return None
 
 
@@ -106,6 +121,7 @@ def extract_preface_heading(text: str, heading_map: dict[str, str]) -> Optional[
     cleaned    = candidate.lstrip("# ").strip()
     normalized = normalize_heading(cleaned)
     if normalized in heading_map:
+        logger.info(f"Preface heading extracted: '{normalized}' -> '{heading_map[normalized]}'")
         return heading_map[normalized]
     return None
 
@@ -118,6 +134,32 @@ def remove_preface_line(text: str, preface_line: str) -> str:
     for idx, line in enumerate(lines):
         line_clean = line.lstrip("# ").strip()
         if normalize_heading(line_clean) == target:
+            logger.info(f"Removing preface line: '{line_clean}'")
             return "\n".join(lines[:idx] + lines[idx + 1:]).strip()
     return text
 
+def count_md_tables(text: str) -> int:
+    """Compte le nombre de tables Markdown dans un segment de texte."""
+    if not text:
+        return 0
+    matches = re.findall(r"(?:\|.*\|[ \t]*(?:\n|$))+", text)
+    return len(matches)
+
+
+def filter_metadata_for_segment(text: str, all_metadata: list[Any]) -> list[Any]:
+    """
+    Retourne les entrées de table_metadata qui correspondent aux tables
+    réellement présentes dans ce segment de texte.
+
+    Stratégie :
+    - On compte le nombre de tables Markdown dans le segment.
+    - On retourne autant d'entrées depuis all_metadata (dans l'ordre).
+    - Les entrées déjà consommées sont retirées de all_metadata (mutation in-place).
+    """
+    n = _count_md_tables(text)
+    if n == 0 or not all_metadata:
+        return []
+    take = min(n, len(all_metadata))
+    result = all_metadata[:take]
+    del all_metadata[:take]
+    return result

@@ -1,3 +1,4 @@
+import logging
 from typing import List, Tuple, Set
 from pathlib import Path
 
@@ -7,10 +8,14 @@ from src.domain.models.section_heading_model import SectionHeading
 from src.domain.ports.input.document_loader_port import DocumentLoaderPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
 from src.domain.services.page_classifier import PageClassifier
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.infrastructure.adapters.document_loader.azure_client_adapter import AzureDocumentClient
 from src.infrastructure.adapters.document_loader.file_converter import FileConverter
 from src.infrastructure.adapters.document_loader.page_processing import PageProcessor
 from src.infrastructure.adapters.document_loader.text_extractor import TextExtractor
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class DocumentLoader(DocumentLoaderPort):
@@ -29,17 +34,22 @@ class DocumentLoader(DocumentLoaderPort):
     #  Point d'entrée public                                               #
     # ------------------------------------------------------------------ #
     async def load(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        logger.info(f"Starting document load: {file_path}")
+
         if not file_path:
+            logger.error("File path is empty")
             raise DocumentLoaderException("Le chemin du fichier ne peut pas être vide.")
 
         ext = Path(file_path).suffix.lower()
         if ext not in self.SUPPORTED_EXTENSIONS:
+            logger.error(f"Unsupported file type '{ext}'")
             raise DocumentLoaderException(
                 message=f"Unsupported file type '{ext}'. "
                         f"Supported formats: {', '.join(self.SUPPORTED_EXTENSIONS)}"
             )
 
         if not Path(file_path).exists():
+            logger.error(f"File not found: {file_path}")
             raise DocumentLoaderException(message=f"File not found: {file_path}")
 
         if ext == ".pptx":
@@ -49,19 +59,23 @@ class DocumentLoader(DocumentLoaderPort):
         try:
             if ext == ".docx":
                 converted_path = self._file_converter.convert_to_pdf(file_path)
+                logger.info(f"Converted DOCX to PDF: {converted_path}")
             return await self._load_pdf(converted_path)
         finally:
-            # Nettoyer le fichier converti (PDF + dossier slides) si différent de l'original
             if converted_path != file_path:
                 self._file_converter.clear(converted_path)
+                logger.info(f"Cleared converted files: {converted_path}")
 
     # ------------------------------------------------------------------ #
     #  PPTX — chaque slide traitée comme image (type forcé workflow)     #
     # ------------------------------------------------------------------ #
     async def _load_pptx(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        logger.info(f"Processing PPTX file: {file_path}")
+
         image_paths: List[str] = self._file_converter.pptx_to_images(file_path)
 
         pages: List[PageContent] = []
+        slide_number = 0
         try:
             for slide_number, image_path in enumerate(image_paths, start=1):
                 content = await self._processor.process_pptx_slide(image_path, slide_number)
@@ -76,10 +90,12 @@ class DocumentLoader(DocumentLoaderPort):
                         tables_metadata=content.get("tables_metadata", []),
                     )
                 )
+            logger.info(f"Processed slide {slide_number}/{len(image_paths)}")
+
         finally:
-            # Nettoyer le dossier de slides généré par pptx_to_images
             if image_paths:
                 self._file_converter.clear(image_paths[0])
+                logger.info("Cleared PPTX slides folder")
 
         return pages, []
 
@@ -87,6 +103,8 @@ class DocumentLoader(DocumentLoaderPort):
     #  PDF — pipeline Azure DI complet                                    #
     # ------------------------------------------------------------------ #
     async def _load_pdf(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
+        logger.info(f"Processing PDF file: {file_path}")
+
         az_result = self._client.analyze_file(file_path)
 
         headings: List[SectionHeading] = self._extract_section_headings(az_result)
@@ -114,6 +132,7 @@ class DocumentLoader(DocumentLoaderPort):
                     tables_metadata=content.get("tables_metadata", []),
                 )
             )
+            logger.info(f"Processed page {page.page_number}/{len(az_result.pages)} ({label})")
 
         # Classification du document basé sur la densité d'articles
         article_keywords = ["المادة", "مادة"]
@@ -125,6 +144,7 @@ class DocumentLoader(DocumentLoaderPort):
             headings = self.filter_section_headings_by_keywords(headings, article_keywords)
             for page in pages:
                 page.content_type = "article"
+            logger.info("Document classified as article type based on headings density")
 
         return pages, headings
 

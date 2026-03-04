@@ -4,8 +4,14 @@ This use case handles the process of answering a question by delegating
 to the RAG services.
 """
 
+import logging
+
+from src.infrastructure.adapters.config.logger import setup_logger
 from src.domain.ports.input.ask_question_port import AskQuestionPort
 from src.domain.services.answer_question_service import AnswerQuestionService
+
+setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class AskQuestionUseCase(AskQuestionPort):
@@ -23,6 +29,7 @@ class AskQuestionUseCase(AskQuestionPort):
         Args:
         """
         self.answer_question_service = answer_question_service
+        logger.info("AskQuestionUseCase initialized with AnswerQuestionService")
 
     def execute(self, question: str) -> str:
         """
@@ -34,4 +41,7 @@ class AskQuestionUseCase(AskQuestionPort):
         Returns:
             str: The answer returned by the RAG services.
         """
-        return self.answer_question_service.execute(question)
+        logger.info(f"Executing question: {question}")
+        answer = self.answer_question_service.execute(question)
+        logger.info("Question executed successfully")
+        return answer
