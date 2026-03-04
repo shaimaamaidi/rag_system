@@ -62,13 +62,13 @@ def _collect_files(data_dir: Path) -> list[Path]:
 async def _ingest_file(ingest_use_case, file_path: Path) -> bool:
     try:
         await ingest_use_case.ingest(str(file_path))
-        logger.info("%s — ingested successfully", file_path.name)
+        logger.info("%s - ingested successfully", file_path.name)
         return True
     except AppException as e:
-        logger.error("%s — [%s] %s", file_path.name, e.code, e.message)
+        logger.error("%s - [%s] %s", file_path.name, e.code, e.message)
         return False
     except Exception as e:
-        logger.error("%s — Unexpected error: %s", file_path.name, str(e))
+        logger.error("%s - Unexpected error: %s", file_path.name, str(e))
         return False
 
 
@@ -106,7 +106,7 @@ async def main() -> None:
 
     if failed_files:
         failed_list = "\n   - ".join(failed_files)
-        logger.warning("⚠️  Failed files:\n   - %s", failed_list)
+        logger.warning("Failed files:\n   - %s", failed_list)
         sys.exit(1)
 
     logger.info("All supported files ingested successfully.")

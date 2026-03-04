@@ -52,20 +52,24 @@ class DocumentIngestionService(IngestDocumentsPort):
             logger.error("Document path cannot be empty")
             raise IngestionException(message="Document path cannot be empty")
 
-        logger.info(f"Starting ingestion for document path: {documents_dir}")
+        logger.info("Starting ingestion for document path: %s", documents_dir)
 
         try:
             pages_content, headings = await self.loader.load(documents_dir)
-            logger.info(f"Loaded document: {len(pages_content)} pages, {len(headings)} headings")
+            logger.info(
+                "Loaded document: %d pages, %d headings",
+                len(pages_content),
+                len(headings),
+            )
 
         except AppException:
             raise
         except Exception as e:
-            logger.error(f"Failed to load document: {e}")
+            logger.error("Failed to load document: %s", e)
             raise IngestionException(message=f"Failed to load document: {str(e)}") from e
 
         if not pages_content:
-            logger.warning(f"No pages extracted from document: {documents_dir}")
+            logger.warning("No pages extracted from document: %s", documents_dir)
             raise EmptyDocumentException(message=f"No pages extracted from document: {documents_dir}")
 
         try:
@@ -74,15 +78,15 @@ class DocumentIngestionService(IngestDocumentsPort):
                 pages=pages_content,
                 headings=headings
             )
-            logger.info(f"Document split into {len(paragraphs)} paragraphs")
+            logger.info("Document split into %d paragraphs", len(paragraphs))
 
             chunks: List[Chunk] = self.chunker.chunk_paragraphs(paragraphs)
-            logger.info(f"Paragraphs chunked into {len(chunks)} chunks")
+            logger.info("Paragraphs chunked into %d chunks", len(chunks))
 
         except AppException:
             raise
         except Exception as e:
-            logger.error(f"Failed to split/chunk document: {e}")
+            logger.error("Failed to split/chunk document: %s", e)
             raise IngestionException(message=f"Failed to split/chunk document: {str(e)}") from e
 
         if not chunks:
@@ -94,13 +98,13 @@ class DocumentIngestionService(IngestDocumentsPort):
             logger.info("Embeddings generated for chunks")
 
             self.vector_store.store_chunks(chunks)
-            logger.info(f"Chunks stored in vector store: {len(chunks)} chunks")
+            logger.info("Chunks stored in vector store: %d chunks", len(chunks))
 
         except AppException:
             raise
         except Exception as e:
-            logger.error(f"Failed to embed/store chunks: {e}")
+            logger.error("Failed to embed/store chunks: %s", e)
             raise IngestionException(message=f"Failed to embed/store chunks: {str(e)}") from e
 
-        logger.info(f"Ingestion completed successfully for document: {documents_dir}")
+        logger.info("Ingestion completed successfully for document: %s", documents_dir)
         return chunks

@@ -54,7 +54,7 @@ class DocumentEmbedding(EmbeddingPort):
             try:
                 c.embedding = self.get_embedding_vector(c.chunk_text)
             except Exception as e:
-                logger.exception(f"Failed to generate embedding for chunk {c.id}")
+                logger.exception("Failed to generate embedding for chunk %s", c.id)
                 raise EmbeddingGenerationException(f"Failed to generate embedding for chunk {c.id}") from e
         logger.info("Embedding generation completed for all chunks")
         return chunks
@@ -75,7 +75,7 @@ class DocumentEmbedding(EmbeddingPort):
         try:
             response = self.client.embeddings.create(input=text, model=self.AZURE_EMBEDDING_MODEL)
             embedding = response.data[0].embedding
-            logger.debug(f"Generated embedding of length {len(embedding)}")
+            logger.debug("Generated embedding of length %d", len(embedding))
             return embedding
         except Exception as e:
             logger.exception("Failed to generate embedding vector")

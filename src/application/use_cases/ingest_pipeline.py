@@ -42,6 +42,6 @@ class IngestDocumentUseCase(IngestDocumentsPort):
         Returns:
             None
         """
-        logger.info(f"Starting document ingestion from directory: {documents_dir}")
+        logger.info("Starting document ingestion from directory: %s", documents_dir)
         await self.ingestion_service.ingest(documents_dir)
-        logger.info(f"Document ingestion completed for directory: {documents_dir}")
+        logger.info("Document ingestion completed for directory: %s", documents_dir)

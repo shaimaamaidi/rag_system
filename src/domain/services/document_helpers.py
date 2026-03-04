@@ -49,14 +49,14 @@ def is_title_page(text: str) -> bool:
 def is_workflow_page(page: PageContent) -> bool:
     result = page.content_type.lower() == "workflow"
     if result:
-        logger.info(f"Page {page.page_number}: detected as workflow page")
+        logger.info("Page %s: detected as workflow page", page.page_number)
     return result
 
 
 def is_article_page(page: PageContent) -> bool:
     result = page.content_type.lower() == "article"
     if result:
-        logger.info(f"Page {page.page_number}: detected as article page")
+        logger.info("Page %s: detected as article page", page.page_number)
     return result
 
 
@@ -65,7 +65,7 @@ def workflow_title(page: PageContent) -> Optional[str]:
     try:
         data = json.loads(text)
         if isinstance(data, dict) and "workflow_title" in data:
-            logger.info(f"Page {page.page_number}: workflow_title found via direct JSON")
+            logger.info("Page %s: workflow_title found via direct JSON", page.page_number)
             return data["workflow_title"]
     except Exception:
         pass
@@ -76,16 +76,16 @@ def workflow_title(page: PageContent) -> Optional[str]:
         inner = inner.replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\')
         data = json.loads(inner)
         if isinstance(data, dict) and "workflow_title" in data:
-            logger.info(f"Page {page.page_number}: workflow_title found via inner JSON")
+            logger.info("Page %s: workflow_title found via inner JSON", page.page_number)
             return data["workflow_title"]
     except Exception:
         pass
     match = re.search(r'workflow_title\\?"?\s*:\\?"?\s*\\?"([^"\\]+)', text)
     if match:
-        logger.info(f"Page {page.page_number}: workflow_title found via regex")
+        logger.info("Page %s: workflow_title found via regex", page.page_number)
         return match.group(1).strip()
 
-    logger.info(f"Page {page.page_number}: no workflow_title found")
+    logger.info("Page %s: no workflow_title found", page.page_number)
     return None
 
 
@@ -121,7 +121,11 @@ def extract_preface_heading(text: str, heading_map: dict[str, str]) -> Optional[
     cleaned    = candidate.lstrip("# ").strip()
     normalized = normalize_heading(cleaned)
     if normalized in heading_map:
-        logger.info(f"Preface heading extracted: '{normalized}' -> '{heading_map[normalized]}'")
+        logger.info(
+            "Preface heading extracted: '%s' -> '%s'",
+            normalized,
+            heading_map[normalized],
+        )
         return heading_map[normalized]
     return None
 
@@ -134,7 +138,7 @@ def remove_preface_line(text: str, preface_line: str) -> str:
     for idx, line in enumerate(lines):
         line_clean = line.lstrip("# ").strip()
         if normalize_heading(line_clean) == target:
-            logger.info(f"Removing preface line: '{line_clean}'")
+            logger.info("Removing preface line: '%s'", line_clean)
             return "\n".join(lines[:idx] + lines[idx + 1:]).strip()
     return text
 

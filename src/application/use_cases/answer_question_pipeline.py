@@ -41,7 +41,7 @@ class AskQuestionUseCase(AskQuestionPort):
         Returns:
             str: The answer returned by the RAG services.
         """
-        logger.info(f"Executing question: {question}")
+        logger.info("Executing question: %s", question)
         answer = self.answer_question_service.execute(question)
         logger.info("Question executed successfully")
         return answer

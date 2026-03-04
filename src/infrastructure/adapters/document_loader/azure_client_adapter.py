@@ -41,7 +41,7 @@ class AzureDocumentClient:
             ) from e
 
     def analyze_file(self, file_path: str, pdf_style: bool = True):
-        logger.info(f"Analyzing file with Azure Document Intelligence: {file_path}")
+        logger.info("Analyzing file with Azure Document Intelligence: %s", file_path)
         try:
             with open(file_path, "rb") as f:
                 features = [DocumentAnalysisFeature.STYLE_FONT] if pdf_style else []
@@ -51,10 +51,10 @@ class AzureDocumentClient:
                     features=features,
                 )
             result = poller.result()
-            logger.info(f"Analysis completed for file: {file_path}")
+            logger.info("Analysis completed for file: %s", file_path)
             return result
         except Exception as e:
-            logger.exception(f"Analysis failed for file: {file_path}")
+            logger.exception("Analysis failed for file: %s", file_path)
             raise AzureDocumentAnalysisException(
                 message=f"Azure Document Intelligence analysis failed: {str(e)}"
             ) from e

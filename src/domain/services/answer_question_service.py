@@ -56,7 +56,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         try:
             question_clean = question.strip()
-            logger.info(f"Generating embedding for question: {question_clean}")
+            logger.info("Generating embedding for question: %s", question_clean)
             question_embedding = self.embedding.get_embedding_vector(question_clean)
             logger.info("Question embedding generated successfully")
         except AppException:
@@ -70,7 +70,7 @@ class AnswerQuestionService(AskQuestionPort):
         try:
             logger.info("Searching for relevant chunks in vector store")
             chunks = self.vector_store.search(question_embedding.vector, top_k=14)
-            logger.info(f"Retrieved {len(chunks)} chunks from vector store")
+            logger.info("Retrieved %d chunks from vector store", len(chunks))
         except AppException:
             raise
         except Exception as e:
@@ -126,5 +126,5 @@ class AnswerQuestionService(AskQuestionPort):
                 context_list.append(entry)
                 seen_paragraphs.add(chunk.paragraph_id)
 
-        logger.info(f"Context assembled from {len(context_list)} chunks")
+        logger.info("Context assembled from %d chunks", len(context_list))
         return "\n\n".join(context_list)

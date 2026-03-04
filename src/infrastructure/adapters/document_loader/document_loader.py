@@ -34,7 +34,7 @@ class DocumentLoader(DocumentLoaderPort):
     #  Point d'entrée public                                               #
     # ------------------------------------------------------------------ #
     async def load(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
-        logger.info(f"Starting document load: {file_path}")
+        logger.info("Starting document load: %s", file_path)
 
         if not file_path:
             logger.error("File path is empty")
@@ -42,14 +42,14 @@ class DocumentLoader(DocumentLoaderPort):
 
         ext = Path(file_path).suffix.lower()
         if ext not in self.SUPPORTED_EXTENSIONS:
-            logger.error(f"Unsupported file type '{ext}'")
+            logger.error("Unsupported file type '%s'", ext)
             raise DocumentLoaderException(
                 message=f"Unsupported file type '{ext}'. "
                         f"Supported formats: {', '.join(self.SUPPORTED_EXTENSIONS)}"
             )
 
         if not Path(file_path).exists():
-            logger.error(f"File not found: {file_path}")
+            logger.error("File not found: %s", file_path)
             raise DocumentLoaderException(message=f"File not found: {file_path}")
 
         if ext == ".pptx":
@@ -59,18 +59,18 @@ class DocumentLoader(DocumentLoaderPort):
         try:
             if ext == ".docx":
                 converted_path = self._file_converter.convert_to_pdf(file_path)
-                logger.info(f"Converted DOCX to PDF: {converted_path}")
+                logger.info("Converted DOCX to PDF: %s", converted_path)
             return await self._load_pdf(converted_path)
         finally:
             if converted_path != file_path:
                 self._file_converter.clear(converted_path)
-                logger.info(f"Cleared converted files: {converted_path}")
+                logger.info("Cleared converted files: %s", converted_path)
 
     # ------------------------------------------------------------------ #
     #  PPTX — chaque slide traitée comme image (type forcé workflow)     #
     # ------------------------------------------------------------------ #
     async def _load_pptx(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
-        logger.info(f"Processing PPTX file: {file_path}")
+        logger.info("Processing PPTX file: %s", file_path)
 
         image_paths: List[str] = self._file_converter.pptx_to_images(file_path)
 
@@ -90,7 +90,7 @@ class DocumentLoader(DocumentLoaderPort):
                         tables_metadata=content.get("tables_metadata", []),
                     )
                 )
-            logger.info(f"Processed slide {slide_number}/{len(image_paths)}")
+            logger.info("Processed slide %d/%d", slide_number, len(image_paths))
 
         finally:
             if image_paths:
@@ -103,7 +103,7 @@ class DocumentLoader(DocumentLoaderPort):
     #  PDF — pipeline Azure DI complet                                    #
     # ------------------------------------------------------------------ #
     async def _load_pdf(self, file_path: str) -> Tuple[List[PageContent], List[SectionHeading]]:
-        logger.info(f"Processing PDF file: {file_path}")
+        logger.info("Processing PDF file: %s", file_path)
 
         az_result = self._client.analyze_file(file_path)
 
@@ -132,7 +132,12 @@ class DocumentLoader(DocumentLoaderPort):
                     tables_metadata=content.get("tables_metadata", []),
                 )
             )
-            logger.info(f"Processed page {page.page_number}/{len(az_result.pages)} ({label})")
+            logger.info(
+                "Processed page %d/%d (%s)",
+                page.page_number,
+                len(az_result.pages),
+                label,
+            )
 
         # Classification du document basé sur la densité d'articles
         article_keywords = ["المادة", "مادة"]

@@ -21,9 +21,14 @@ class DocumentSplitter:
 
     @staticmethod
     def split(name_doc, pages, headings) -> list[Paragraph]:
-        logger.info(f"Starting DocumentSplitter for '{name_doc}' with {len(pages)} pages and {len(headings)} headings")
+        logger.info(
+            "Starting DocumentSplitter for '%s' with %d pages and %d headings",
+            name_doc,
+            len(pages),
+            len(headings),
+        )
         paragraphs = DocumentSplitter._build_paragraphs(pages, headings, name_doc)
-        logger.info(f"DocumentSplitter finished: {len(paragraphs)} paragraphs created")
+        logger.info("DocumentSplitter finished: %d paragraphs created", len(paragraphs))
         return paragraphs
 
     @staticmethod
@@ -57,7 +62,7 @@ class DocumentSplitter:
         try:
             events = DocumentSplitter._build_events(pages, headings_by_page)
         except Exception as e:
-            logger.error(f"Failed to build events for document '{name_doc}': {e}")
+            logger.error("Failed to build events for document '%s': %s", name_doc, e)
             return paragraphs
 
         # ── closures ──────────────────────────────────────────────────────
@@ -117,8 +122,13 @@ class DocumentSplitter:
                     is_article     = current_is_article,
                     table_metadata = current_table_metadata.copy(),
                 ))
-                logger.info(f"Paragraph created: title='{active_title}', sub_title='{current_heading}', "
-                            f"text_length={len(text)} chars, tables={current_has_table}")
+                logger.info(
+                    "Paragraph created: title='%s', sub_title='%s', text_length=%d chars, tables=%s",
+                    active_title,
+                    current_heading,
+                    len(text),
+                    current_has_table,
+                )
                 current_heading    = None
                 current_has_table  = False
                 current_is_article = False
@@ -211,7 +221,10 @@ class DocumentSplitter:
                 _flush_pending_title()
                 workflow_title_val, page_text, has_tbl, table_metadata = payload
                 if not workflow_title_val:
-                    logger.warning(f"Workflow page detected but no title found: page_text='{page_text[:50]}...'")
+                    logger.warning(
+                        "Workflow page detected but no title found: page_text='%s...'",
+                        page_text[:50],
+                    )
                     workflow_title_val = "Unknown workflow"
                 if pending_headings:
                     if has_enough_content_in_pending():
@@ -272,7 +285,7 @@ class DocumentSplitter:
                 try:
                     wf_title_val = workflow_title(page)
                 except Exception as e:
-                    logger.error(f"Failed to extract workflow title on page {page_num}: {e}")
+                    logger.error("Failed to extract workflow title on page %s: %s", page_num, e)
                     wf_title_val = "Unknown workflow"
                 preface_heading = extract_preface_heading(page_text, heading_map)
                 heading_value   = preface_heading or wf_title_val

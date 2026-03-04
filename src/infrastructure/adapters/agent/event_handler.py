@@ -90,7 +90,7 @@ class EventHandler(AgentEventHandler):
             self._current_message_id = None
             self._accumulated_text = ""
         else:
-            logger.info(f"{message.status} (id: {message.id})")
+            logger.info("%s (id: %s)", message.status, message.id)
 
     def on_thread_run(self, run: ThreadRun) -> None:
         """
@@ -99,9 +99,9 @@ class EventHandler(AgentEventHandler):
         Args:
             run (ThreadRun): The current run instance.
         """
-        logger.info(f"status > {run.status}")
+        logger.info("status > %s", run.status)
         if run.status == "failed":
-            logger.error(f"error > {run.last_error}")
+            logger.error("error > %s", run.last_error)
 
     def on_run_step(self, step: RunStep) -> None:
         """
@@ -110,7 +110,7 @@ class EventHandler(AgentEventHandler):
         Args:
             step (RunStep): The step being executed.
         """
-        logger.info(f"{step.type} > {step.status}")
+        logger.info("%s > %s", step.type, step.status)
 
     def on_run_step_delta(self, delta: RunStepDeltaChunk) -> None:
         """
@@ -122,7 +122,7 @@ class EventHandler(AgentEventHandler):
         if delta.delta.step_details and delta.delta.step_details.tool_calls:
             for tcall in delta.delta.step_details.tool_calls:
                 if getattr(tcall, "function", None) and tcall.function.name:
-                    logger.info(f"tool call > {tcall.function.name}")
+                    logger.info("tool call > %s", tcall.function.name)
 
     def on_unhandled_event(self, event_type: str, event_data):
         """
@@ -132,7 +132,7 @@ class EventHandler(AgentEventHandler):
             event_type (str): The type of the event.
             event_data: The event data.
         """
-        logger.debug(f"unhandled > {event_type}")
+        logger.debug("unhandled > %s", event_type)
 
     def on_error(self, data: str) -> None:
         """
@@ -141,7 +141,7 @@ class EventHandler(AgentEventHandler):
         Args:
             data (str): Error message.
         """
-        logger.error(f"error > {data}")
+        logger.error("error > %s", data)
 
     def on_done(self) -> None:
         """

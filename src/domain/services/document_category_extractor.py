@@ -26,7 +26,7 @@ class DocumentCategoryExtractor:
         excel_relative_path = os.getenv(excel_path_env)
 
         if not excel_relative_path:
-            logger.error(f"Environment variable '{excel_path_env}' is not defined in .env")
+            logger.error("Environment variable '%s' is not defined in .env", excel_path_env)
             raise CategoryExtractorConfigException(
                 message=f"Environment variable '{excel_path_env}' is not defined in .env"
             )
@@ -34,14 +34,14 @@ class DocumentCategoryExtractor:
         current_file = Path(__file__).resolve()
         project_root = current_file.parent.parent.parent  # remonte jusqu'à src
         self.excel_path = project_root / excel_relative_path
-        logger.info(f"DocumentCategoryExtractor initialized with Excel path: {self.excel_path}")
+        logger.info("DocumentCategoryExtractor initialized with Excel path: %s", self.excel_path)
 
     def extract_categories(self) -> dict:
         """
         Lit le fichier Excel et renvoie un dictionnaire {nom_document: catégorie}.
         :return: dict
         """
-        logger.info(f"Starting category extraction from Excel: {self.excel_path}")
+        logger.info("Starting category extraction from Excel: %s", self.excel_path)
         try:
             df = pd.read_excel(self.excel_path, engine="openpyxl", header=None)
             result = {}
@@ -57,7 +57,7 @@ class DocumentCategoryExtractor:
                 ):
                     result[str(document_name).strip()] = str(category).strip()
 
-            logger.info(f"Category extraction completed successfully, {len(result)} categories found")
+            logger.info("Category extraction completed successfully, %d categories found", len(result))
             return result
 
         except Exception as e:

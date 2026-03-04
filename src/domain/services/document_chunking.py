@@ -45,10 +45,14 @@ class SmartChunker:
         self.overlap = overlap
         self.extractor_category = extractor_category
         logger.info(
-            f"SmartChunker initialized: max_chunk={self.max_chunk}, overlap={self.overlap}, extractor_category={'provided' if extractor_category else 'None'}")
+            "SmartChunker initialized: max_chunk=%d, overlap=%d, extractor_category=%s",
+            self.max_chunk,
+            self.overlap,
+            "provided" if extractor_category else "None",
+        )
 
     def chunk_paragraphs(self, paragraphs: List[Paragraph]) -> List[Chunk]:
-        logger.info(f"Starting chunking of {len(paragraphs)} paragraphs")
+        logger.info("Starting chunking of %d paragraphs", len(paragraphs))
         if not paragraphs:
             logger.warning("No paragraphs provided to chunk")
             return []
@@ -59,7 +63,7 @@ class SmartChunker:
             para_chunks = self._chunk_paragraph(para, para_id)
             chunks.extend(para_chunks)
 
-        logger.info(f"Chunking completed: {len(chunks)} total chunks created")
+        logger.info("Chunking completed: %d total chunks created", len(chunks))
         return chunks
 
     def _chunk_paragraph(self, para: Paragraph, para_id: str) -> List[Chunk]:
