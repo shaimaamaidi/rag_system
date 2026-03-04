@@ -8,7 +8,7 @@ from src.domain.exceptions.azure_answer_exception import AzureOpenAIAnswerExcept
 from src.domain.exceptions.azure_config_exception import AzureOpenAIConfigException
 from src.domain.ports.output.answer_generator_port import AnswerGeneratorPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

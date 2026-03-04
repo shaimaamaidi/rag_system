@@ -7,7 +7,7 @@ from pathlib import Path
 from src.domain.models.chunk_model import Chunk
 from src.domain.models.paragraph_model import Paragraph
 from src.domain.services.document_category_extractor import DocumentCategoryExtractor
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

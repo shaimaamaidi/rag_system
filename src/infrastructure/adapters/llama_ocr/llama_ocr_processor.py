@@ -4,7 +4,7 @@ from src.domain.models.ocr_result_model import OcrResult
 from src.domain.ports.output.LlamaOcrPort import LlamaOcrPort
 from .llama_api_client import LlamaApiClient
 from .llama_parser import LlamaOcrParser
-from ..config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ from src.domain.services.document_chunking import SmartChunker
 from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
 from src.infrastructure.adapters.agent.agent_adapter import AzureAgentAdapter
 from src.infrastructure.adapters.answer_generation.azure_answer_generator import AzureOpenAIAnswerGenerator
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.adapters.document_embedding.document_embedding import DocumentEmbedding
 from src.infrastructure.adapters.document_loader.document_loader import DocumentLoader
 from src.infrastructure.adapters.search_adapter.azure_search_adapter import AzureAISearchAdapter

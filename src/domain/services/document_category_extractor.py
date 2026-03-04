@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from src.domain.exceptions.category_extraction_exception import CategoryExtractionException
 from src.domain.exceptions.category_extractor_config_exception import CategoryExtractorConfigException
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

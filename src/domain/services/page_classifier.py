@@ -4,7 +4,7 @@ from azure.ai.documentintelligence.models import DocumentPage
 
 from src.domain.models.classification_thresholds_model import ClassificationThresholds
 from src.domain.ports.input.page_classifier_port import PageClassifierPort, PageLabel
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

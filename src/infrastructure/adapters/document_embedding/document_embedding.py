@@ -2,7 +2,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 from openai import AzureOpenAI
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 import logging
 
 from src.domain.exceptions.azure_config_exception import AzureOpenAIConfigException

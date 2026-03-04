@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter
 
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 # ── Logger ─────────────────────────
 setup_logger()

@@ -20,7 +20,7 @@ from azure.search.documents.indexes.models import (
 
 from src.domain.exceptions.azure_search_config_exception import AzureSearchConfigException
 from src.domain.exceptions.azure_search_index_exception import AzureSearchIndexException
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

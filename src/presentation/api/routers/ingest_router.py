@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Request
 from src.domain.models.ingest_response_model import IngestResponse
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 

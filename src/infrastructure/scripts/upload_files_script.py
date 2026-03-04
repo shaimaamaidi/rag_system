@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from src.domain.exceptions.app_exception import AppException
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.di.container import Container
 
 setup_logger()

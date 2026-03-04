@@ -8,7 +8,7 @@ from src.domain.models.section_heading_model import SectionHeading
 from src.domain.ports.input.document_loader_port import DocumentLoaderPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
 from src.domain.services.page_classifier import PageClassifier
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.adapters.document_loader.azure_client_adapter import AzureDocumentClient
 from src.infrastructure.adapters.document_loader.file_converter import FileConverter
 from src.infrastructure.adapters.document_loader.page_processing import PageProcessor

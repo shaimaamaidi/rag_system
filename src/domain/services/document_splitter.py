@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import Any, Optional
 
 from src.domain.services.document_helpers import (
@@ -12,7 +11,7 @@ from src.domain.factories.paragraph_factory import ParagraphFactory
 from src.domain.models.page_content_model import PageContent
 from src.domain.models.paragraph_model import Paragraph
 from src.domain.models.section_heading_model import SectionHeading
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

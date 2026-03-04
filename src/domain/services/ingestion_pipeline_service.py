@@ -18,7 +18,7 @@ from src.domain.ports.output.embedding_port import EmbeddingPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
 from src.domain.services.document_chunking import SmartChunker
 from src.domain.services.document_splitter import DocumentSplitter
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

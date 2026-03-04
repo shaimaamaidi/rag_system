@@ -10,7 +10,7 @@ import logging
 
 from azure.core.exceptions import ResourceNotFoundError
 
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
 
 setup_logger()

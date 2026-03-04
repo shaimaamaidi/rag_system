@@ -14,7 +14,7 @@ from src.domain.ports.input.ask_question_port import AskQuestionPort
 from src.domain.ports.output.embedding_port import EmbeddingPort
 from src.domain.ports.output.answer_generator_port import AnswerGeneratorPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

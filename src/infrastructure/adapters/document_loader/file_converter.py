@@ -25,7 +25,7 @@ import win32com.client
 import fitz
 
 from src.domain.exceptions.document_loader_exception import DocumentLoaderException
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ import fitz
 from src.domain.exceptions.page_image_extraction_exception import PageImageExtractionException
 from src.domain.exceptions.workflow_conversion_exception import WorkflowConversionException
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.adapters.document_loader.text_extractor import TextExtractor
 from src.infrastructure.adapters.llama_ocr.llama_ocr_processor import LlamaOcrAdapter
 from src.infrastructure.adapters.workflow_convertor.azure_workflow_converter import AzureWorkflowConverter

@@ -6,7 +6,7 @@ using Retrieval-Augmented Generation (RAG).
 import logging
 
 from src.application.use_cases.answer_question_pipeline import AskQuestionUseCase
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

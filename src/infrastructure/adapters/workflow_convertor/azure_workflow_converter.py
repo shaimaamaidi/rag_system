@@ -10,7 +10,7 @@ from src.domain.exceptions.workflow_converter_config_exception import WorkflowCo
 from src.domain.models.workflow_model import WorkflowResult
 from src.domain.ports.input.workflow_converter_port import WorkflowConverterPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)

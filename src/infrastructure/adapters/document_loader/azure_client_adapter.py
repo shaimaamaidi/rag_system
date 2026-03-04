@@ -3,7 +3,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import DocumentAnalysisFeature
 from azure.core.credentials import AzureKeyCredential
 from dotenv import load_dotenv
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 import logging
 
 from src.domain.exceptions.azure_document_analysis_exception import AzureDocumentAnalysisException

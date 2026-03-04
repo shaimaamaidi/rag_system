@@ -6,7 +6,7 @@ to the RAG services.
 
 import logging
 
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.domain.ports.input.ask_question_port import AskQuestionPort
 from src.domain.services.answer_question_service import AnswerQuestionService
 

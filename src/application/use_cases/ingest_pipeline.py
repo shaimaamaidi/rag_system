@@ -6,7 +6,7 @@ the process to the DocumentIngestionService.
 
 import logging
 
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.domain.ports.input.ingest_documents_port import IngestDocumentsPort
 from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
 

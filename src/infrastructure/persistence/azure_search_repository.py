@@ -30,7 +30,7 @@ from src.domain.exceptions.azure_search_query_exception import AzureSearchQueryE
 from src.domain.exceptions.azure_search_upload_exception import AzureSearchUploadException
 from src.domain.exceptions.chunk_missing_embedding_exception import ChunkMissingEmbeddingException
 from src.domain.models.chunk_model import Chunk
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
 
 setup_logger()

@@ -9,7 +9,7 @@ from src.domain.exceptions.llama_config_exception import LlamaConfigException
 from src.domain.exceptions.llama_job_failed_exception import LlamaJobFailedException
 from src.domain.exceptions.llama_polling_exception import LlamaPollingException
 from src.domain.exceptions.llama_upload_exception import LlamaUploadException
-from src.infrastructure.adapters.config.logger import setup_logger
+from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)
