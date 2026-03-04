@@ -36,4 +36,4 @@ def create_search_tool(use_case: AskQuestionUseCase):
         """
         return use_case.execute(question)
 
-    return search_tool()
+    return search_tool

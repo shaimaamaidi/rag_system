@@ -12,7 +12,6 @@ from src.domain.exceptions.azure_answer_exception import AzureOpenAIAnswerExcept
 from src.domain.exceptions.azure_config_exception import AzureOpenAIConfigException
 from src.domain.ports.output.answer_generator_port import AnswerGeneratorPort
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
-from src.infrastructure.adapters.search_adapter.azure_search_adapter import AzureAISearchAdapter
 
 
 class AzureOpenAIAnswerGenerator(AnswerGeneratorPort):
@@ -24,7 +23,7 @@ class AzureOpenAIAnswerGenerator(AnswerGeneratorPort):
     - ask_is_allowed: Determines if a question is within allowed domains.
     """
 
-    def __init__(self, azure_adapter: AzureAISearchAdapter, prompt_provider: PromptProviderPort):
+    def __init__(self, prompt_provider: PromptProviderPort):
         load_dotenv()
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -42,7 +41,6 @@ class AzureOpenAIAnswerGenerator(AnswerGeneratorPort):
             azure_endpoint=self.endpoint,
             api_version=self.api_version
         )
-        self.azure_adapter = azure_adapter
         self.prompt_provider = prompt_provider
 
     def generate_answer(self, context, question) -> str:

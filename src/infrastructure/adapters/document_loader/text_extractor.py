@@ -1,5 +1,186 @@
+# src/infrastructure/adapters/document_loader/text_extractor.py
+
+from typing import Set, Optional
+from azure.ai.documentintelligence.models import ParagraphRole
+
+
 class TextExtractor:
-    """Extraction texte / header / table / metadata."""
+
+    @staticmethod
+    def extract_text_page(page, az_result, header_contents: Set[str]) -> dict:
+        """Extraction complète : texte + tables + metadata (depuis Azure DI)."""
+        page_num = page.page_number
+
+        # ── Collecter les tables de cette page ──────────────────────────
+        page_tables = []
+        for table_idx, table in enumerate(az_result.tables):
+            for region in table.bounding_regions:
+                if region.page_number == page_num and region.polygon:
+                    poly = region.polygon
+                    # Support both object format (.x/.y) and flat float list (x0,y0,x1,y1,...)
+                    if hasattr(poly[0], 'x'):
+                        xs = [p.x for p in poly]
+                        ys = [p.y for p in poly]
+                    else:
+                        xs = [poly[i] for i in range(0, len(poly), 2)]
+                        ys = [poly[i] for i in range(1, len(poly), 2)]
+
+                    y_top = min(ys)
+                    y_bot = max(ys)
+                    x_min = min(xs)
+                    x_max = max(xs)
+
+                    page_tables.append({
+                        "table_idx": table_idx,
+                        "table": table,
+                        "y_top": y_top,
+                        "bbox": (x_min, x_max, y_top, y_bot),
+                    })
+                    break  # Une seule entrée par table par page — évite les doublons
+
+        has_table = bool(page_tables)
+        table_boxes = [t["bbox"] for t in page_tables]
+
+        tables_metadata = [
+            {
+                "table_index": t["table_idx"],
+                "row_count": t["table"].row_count,
+                "col_count": t["table"].column_count,
+                "y_position": round(t["y_top"], 4),
+            }
+            for t in page_tables
+        ]
+
+        # ── Calculer la limite basse du header ──────────────────────────
+        header_y_max = TextExtractor._get_header_y_max(page.page_number, az_result)
+        if header_y_max is not None:
+            header_y_max += 0.10
+
+        # ── Tokeniser le header pour filtrage fragment ──────────────────
+        header_tokens: Set[str] = set()
+        for hc in header_contents:
+            for tok in hc.replace("/", " ").replace("|", " ").split():
+                tok = tok.strip()
+                if len(tok) >= 4:
+                    header_tokens.add(tok)
+
+        # ── Collecter les numéros de page pour les ignorer ──────────────
+        page_number_contents: Set[str] = set()
+        for para in (az_result.paragraphs or []):
+            role_str = str(getattr(para, "role", "")).upper()
+            if "PAGE_NUMBER" in role_str or "PAGENUMBER" in role_str:
+                for region in (para.bounding_regions or []):
+                    if region.page_number == page.page_number:
+                        page_number_contents.add(para.content.strip())
+
+        def _is_header_fragment(line_content: str) -> bool:
+            if not line_content:
+                return False
+            line_tokens = [
+                t.strip()
+                for t in line_content.replace("/", " ").replace("|", " ").split()
+                if len(t.strip()) >= 4
+            ]
+            if not line_tokens:
+                return False
+            return all(tok in header_tokens for tok in line_tokens)
+
+        # ── Construire les segments de texte (lignes hors header/table) ─
+        segments = []
+        for line in (page.lines or []):
+            line_content = line.content.strip()
+            line_y = TextExtractor._line_y_center(line)
+
+            if line_content in page_number_contents:
+                continue
+            if header_y_max is not None and line_y <= header_y_max:
+                continue
+            if line_content in header_contents:
+                continue
+            if any(line_content in hc or hc in line_content for hc in header_contents):
+                continue
+            if header_contents and _is_header_fragment(line_content):
+                continue
+            if TextExtractor._line_in_table(line, table_boxes):
+                continue
+
+            segments.append((line_y, line.content))
+
+        # ── Ajouter les tables en Markdown à leur position Y ────────────
+        for t in page_tables:
+            table_str = TextExtractor._table_to_markdown(t["table"])
+            segments.append((t["y_top"], table_str))
+
+        segments.sort(key=lambda s: s[0])
+        text = "\n\n".join(c for _, c in segments if c.strip())
+
+        return {
+            "type": "text",
+            "text": text,
+            "has_table": has_table,
+            "tables_metadata": tables_metadata,
+        }
+
+    # ── Helpers statiques ───────────────────────────────────────────────
+
+    @staticmethod
+    def _get_header_y_max(page_number: int, az_result) -> Optional[float]:
+        page_paragraphs = []
+        for para in (az_result.paragraphs or []):
+            if not para.bounding_regions:
+                continue
+            region = para.bounding_regions[0]
+            if region.page_number != page_number:
+                continue
+            poly = region.polygon or []
+            if not poly:
+                continue
+            if hasattr(poly[0], 'y'):
+                y_top = poly[0].y
+                y_bot = max(p.y for p in poly)
+            else:
+                y_top = poly[1]
+                y_bot = max(poly[i] for i in range(1, len(poly), 2))
+            page_paragraphs.append((y_top, y_bot, para))
+
+        page_paragraphs.sort(key=lambda t: t[0])
+        last_header_y_bot = None
+        for _, y_bot, para in page_paragraphs:
+            if para.role == ParagraphRole.PAGE_HEADER:
+                last_header_y_bot = y_bot
+        return last_header_y_bot
+
+    @staticmethod
+    def _line_y_center(line) -> float:
+        if not line.polygon:
+            return 0.0
+        y_coords = [line.polygon[i] for i in range(1, len(line.polygon), 2)]
+        return sum(y_coords) / len(y_coords)
+
+    @staticmethod
+    def _line_in_table(line, boxes: list) -> bool:
+        if not line.polygon or not boxes:
+            return False
+        x_coords = [line.polygon[i] for i in range(0, len(line.polygon), 2)]
+        y_coords = [line.polygon[i] for i in range(1, len(line.polygon), 2)]
+        lx = sum(x_coords) / len(x_coords)
+        ly = sum(y_coords) / len(y_coords)
+        return any(xn <= lx <= xx and yn <= ly <= yx for xn, xx, yn, yx in boxes)
+
+    @staticmethod
+    def _table_to_markdown(table) -> str:
+        grid = [[""] * table.column_count for _ in range(table.row_count)]
+        for cell in table.cells:
+            content = cell.content.replace("\n", " ").strip()
+            grid[cell.row_index][cell.column_index] = content
+
+        def _md_row(cells):
+            return "| " + " | ".join(cells) + " |"
+
+        header_row = _md_row(grid[0]) if grid else ""
+        separator = "| " + " | ".join(["---"] * table.column_count) + " |"
+        data_rows = [_md_row(row) for row in grid[1:]]
+        return "\n".join([header_row, separator] + data_rows)
 
     @staticmethod
     def remove_header(text: str, header: str) -> str:
@@ -10,7 +191,42 @@ class TextExtractor:
         return text.strip()
 
     @staticmethod
-    def extract_tables_metadata(content: str) -> list:
+    def extract_page_header_contents(page_number: int, az_result) -> Set[str]:
+        page_paragraphs = []
+        for para in (az_result.paragraphs or []):
+            if not para.bounding_regions:
+                continue
+            region = para.bounding_regions[0]
+            if region.page_number != page_number:
+                continue
+            poly = region.polygon or []
+            if not poly:
+                continue
+            y = poly[1] if not hasattr(poly[0], 'y') else poly[0].y
+            page_paragraphs.append((y, para))
+
+        page_paragraphs.sort(key=lambda t: t[0])
+
+        last_header_idx = -1
+        for idx, (y, para) in enumerate(page_paragraphs):
+            if para.role == ParagraphRole.PAGE_HEADER:
+                last_header_idx = idx
+
+        if last_header_idx == -1:
+            return set()
+
+        header_contents: Set[str] = set()
+        for idx in range(last_header_idx + 1):
+            _, para = page_paragraphs[idx]
+            header_contents.add(para.content.strip())
+        return header_contents
+
+    @staticmethod
+    def extract_tables_metadata_from_text(content: str) -> list:
+        """Fallback : détecte tables Markdown/HTML dans du texte brut (pour workflow/PPTX).
+
+        y_position est None car non disponible depuis un résultat OCR pur (pas de coordonnées).
+        """
         import re
         tables_metadata = []
         md_tables = re.compile(r"((?:\|.*\|\s*\n)+)", re.MULTILINE).findall(content)
@@ -19,13 +235,21 @@ class TextExtractor:
             if len(lines) < 2:
                 continue
             col_count = lines[0].count("|") - 1
-            row_count = len(lines[2:]) + 1
-            tables_metadata.append({"table_index": idx, "row_count": row_count, "col_count": col_count})
-
+            row_count = len(lines[2:]) + 1  # lignes de données + ligne header
+            tables_metadata.append({
+                "table_index": idx,
+                "row_count": row_count,
+                "col_count": col_count,
+                "y_position": None,
+            })
         html_tables = re.compile(r"<table.*?>.*?</table>", re.DOTALL | re.IGNORECASE).findall(content)
         for idx, table_html in enumerate(html_tables, start=len(tables_metadata)):
             rows = re.findall(r"<tr.*?>", table_html, re.IGNORECASE)
             cols = re.findall(r"<t[dh].*?>", table_html, re.IGNORECASE)
-            tables_metadata.append({"table_index": idx, "row_count": len(rows), "col_count": len(cols)})
-
+            tables_metadata.append({
+                "table_index": idx,
+                "row_count": len(rows),
+                "col_count": len(cols),
+                "y_position": None,
+            })
         return tables_metadata

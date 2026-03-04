@@ -4,17 +4,30 @@ Location: src/infrastructure/scripts/ingest_data.py
 """
 
 import sys
+import os
+from dotenv import load_dotenv
 from pathlib import Path
 
 from src.domain.exceptions.app_exception import AppException
+from src.infrastructure.di.container import Container
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.infrastructure.di.container import Container
+load_dotenv()
+data_dir_env = os.getenv("DATA_DIR")
 
-DATA_DIR = PROJECT_ROOT / "data"
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".xlsx"}
+if not data_dir_env:
+    print("❌ DATA_DIR not defined in .env")
+    sys.exit(1)
+
+DATA_DIR = Path(data_dir_env)
+
+# Si chemin relatif → on le rattache au project root
+if not DATA_DIR.is_absolute():
+    DATA_DIR = PROJECT_ROOT / DATA_DIR
+
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 
 
 def _collect_files(data_dir: Path) -> list[Path]:
@@ -43,9 +56,9 @@ def _collect_files(data_dir: Path) -> list[Path]:
     return supported
 
 
-def _ingest_file(ingest_use_case, file_path: Path) -> bool:
+async def _ingest_file(ingest_use_case, file_path: Path) -> bool:
     try:
-        ingest_use_case.ingest(str(file_path))
+        await ingest_use_case.ingest(str(file_path))
         print(f"✅ {file_path.name} — ingested successfully")
         return True
     except AppException as e:
@@ -56,7 +69,7 @@ def _ingest_file(ingest_use_case, file_path: Path) -> bool:
         return False
 
 
-def main() -> None:
+async def main() -> None:
     print("=" * 60)
     print("  RAG Ingestion Script")
     print(f"  Data directory : {DATA_DIR}")
@@ -86,7 +99,7 @@ def main() -> None:
 
     for i, file_path in enumerate(files, start=1):
         print(f"[{i}/{total}] Processing: {file_path.name}")
-        ok = _ingest_file(container.ingest_use_case, file_path)
+        ok = await _ingest_file(container.ingest_use_case, file_path)
         if ok:
             success_count += 1
         else:
@@ -111,4 +124,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())

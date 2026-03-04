@@ -21,9 +21,12 @@ Chunk schema (aligned with SmartChunker output):
     has_table       → has_table       (bool, filterable)
     table_metadata  → table_metadata  (List[str], searchable)
 """
+import json
+from dataclasses import asdict
 from typing import List
 
 from azure.search.documents._generated.models import VectorizedQuery
+from pathlib import Path
 
 from src.domain.exceptions.azure_search_query_exception import AzureSearchQueryException
 from src.domain.exceptions.azure_search_upload_exception import AzureSearchUploadException
@@ -56,7 +59,6 @@ class AzureSearchRepository:
         self.search_client = self.client.get_search_client()
 
     # ── upload ────────────────────────────────
-
     def upload_chunks(self, chunks: List[Chunk]):
         """
         Upload a list of Chunk objects to Azure Cognitive Search.

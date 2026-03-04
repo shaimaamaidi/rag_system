@@ -27,7 +27,6 @@ class PageClassifier(PageClassifierPort):
             ystd is not None and ystd <= t.y_std_gaps_max
         ):
             return "workflow"
-
         if has_keyword:
             return "workflow"
 
@@ -63,3 +62,27 @@ class PageClassifier(PageClassifierPort):
             "avg_words_per_line": round(avg_words_per_line, 4),
             "y_std_gaps": round(y_std_gaps, 4) if y_std_gaps is not None else None,
         }
+
+    @staticmethod
+    def _has_key_word_in_header_table(page, result) -> bool:
+        """
+        Retourne True si :
+        - Une cellule de la première ligne d'une table contient un mot-clé
+        """
+        workflow_keywords = ["رموز"]
+
+        for table in result.tables or []:
+            for region in table.bounding_regions:
+                if region.page_number == page.page_number:
+                    # Vérifier seulement la première ligne
+                    first_row_cells = [
+                        cell.content for cell in table.cells
+                        if cell.row_index == 0
+                    ]
+                    for cell_content in first_row_cells:
+                        cell_text = cell_content.replace(" ", "").strip()
+                        for kw in workflow_keywords:
+                            if kw in cell_text:
+                                return True
+
+        return False

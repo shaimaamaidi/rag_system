@@ -4,20 +4,9 @@ from pydantic import BaseModel, Field
 
 from src.domain.exceptions.azure_agent_run_exception import AzureAgentRunException
 from src.domain.exceptions.question_empty_exception import QuestionEmptyException
+from src.domain.models.ask_request_model import AskRequest
 
 router = APIRouter(prefix="/ask", tags=["Question Answering"])
-
-
-# ── Schemas ───────────────────────────────────────────────────────────────────
-
-class AskRequest(BaseModel):
-    question: str = Field(
-        ...,
-        min_length=3,
-        max_length=1000,
-        description="The question to answer",
-    )
-
 
 # ── Dependency ────────────────────────────────────────────────────────────────
 

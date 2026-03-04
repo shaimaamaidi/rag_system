@@ -12,3 +12,8 @@ azure-ai-projects
 azure-identity
 openpyxl
 pandas
+comtypes
+pywin32
+python-pptx
+python-docx
+reportlab

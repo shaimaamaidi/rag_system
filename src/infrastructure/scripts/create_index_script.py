@@ -24,7 +24,6 @@ def main():
         client = AzureSearchClient()
         client.index_client.delete_index(client.index_name)
         index = client.create_index()
-        print("hi")
     except Exception as e:
         print("Failed to create Azure Search index")
         raise e

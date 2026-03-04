@@ -3,7 +3,6 @@ Module containing the DocumentIngestionService class.
 This services is responsible for ingesting documents by loading, preprocessing,
 chunking, generating embeddings, and storing chunks in a vector store.
 """
-
 from typing import List
 
 from pathlib import Path
@@ -54,14 +53,15 @@ class DocumentIngestionService(IngestDocumentsPort):
         self.embedding = embedding
         self.vector_store = vector_store
 
-    def ingest(self, documents_dir: str):
+    async def ingest(self, documents_dir: str):
         if not documents_dir or not documents_dir.strip():
             raise IngestionException(
                 message="Document path cannot be empty",
             )
 
         try:
-            pages_content, headings = self.loader.load(documents_dir)
+            pages_content, headings = await self.loader.load(documents_dir)
+
         except AppException:
             raise  # propage les exceptions domain déjà typées
         except Exception as e:
@@ -81,6 +81,7 @@ class DocumentIngestionService(IngestDocumentsPort):
                 headings=headings
             )
             chunks: List[Chunk] = self.chunker.chunk_paragraphs(paragraphs)
+
         except AppException:
             raise
         except Exception as e:

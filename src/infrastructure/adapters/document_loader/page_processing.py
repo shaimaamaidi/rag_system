@@ -5,8 +5,10 @@ import fitz
 from src.domain.exceptions.page_image_extraction_exception import PageImageExtractionException
 from src.domain.exceptions.workflow_conversion_exception import WorkflowConversionException
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
+from src.infrastructure.adapters.document_loader.text_extractor import TextExtractor
 from src.infrastructure.adapters.llama_ocr.llama_ocr_processor import LlamaOcrAdapter
 from src.infrastructure.adapters.workflow_convertor.azure_workflow_converter import AzureWorkflowConverter
+
 
 class PageProcessor:
     """Orchestration pour extraire texte, workflows et tables d'une page."""
@@ -15,7 +17,10 @@ class PageProcessor:
         self._llama = LlamaOcrAdapter()
         self._converter = AzureWorkflowConverter(prompt_provider)
 
-    def process_workflow_page(self, page, file_path: str) -> dict:
+    # ------------------------------------------------------------------ #
+    #  PDF workflow page (existing)                                       #
+    # ------------------------------------------------------------------ #
+    async def process_workflow_page(self, page, file_path: str) -> dict:
         tmp_dir = "tmp_images"
         os.makedirs(tmp_dir, exist_ok=True)
         image_path = os.path.join(tmp_dir, f"page_{page.page_number}.png")
@@ -23,6 +28,10 @@ class PageProcessor:
         # PDF → image
         try:
             doc = fitz.open(file_path)
+            if page.page_number - 1 >= len(doc):
+                raise PageImageExtractionException(
+                    message=f"Page {page.page_number} out of range — PDF has {len(doc)} pages."
+                )
             pdf_page = doc.load_page(page.page_number - 1)
             rect = pdf_page.rect
             mat = fitz.Matrix(3840 / rect.width, 2160 / rect.height)
@@ -33,22 +42,57 @@ class PageProcessor:
             raise PageImageExtractionException(
                 message=f"Failed to extract image from page {page.page_number}: {str(e)}"
             ) from e
-        # OCR Llama
-        ocr_result = self._llama.process(image_path)
+
+        return await self._run_llama_pipeline(image_path, cleanup=True)
+
+    # ------------------------------------------------------------------ #
+    #  PPTX slide (new) — image already on disk, no PDF extraction       #
+    # ------------------------------------------------------------------ #
+    async def process_pptx_slide(self, image_path: str, slide_number: int) -> dict:
+        """Traite une slide PPTX déjà exportée en image.
+
+        Args:
+            image_path: Chemin vers le PNG de la slide (persistent).
+            slide_number: Numéro de la slide (1-indexed), utilisé pour les messages d'erreur.
+
+        Returns:
+            dict avec les clés : type, text, has_table, tables_metadata.
+        """
+        if not os.path.exists(image_path):
+            raise PageImageExtractionException(
+                message=f"Slide image not found for slide {slide_number}: {image_path}"
+            )
+
+        # Images are persistent — no cleanup
+        return await self._run_llama_pipeline(image_path, cleanup=False)
+
+    # ------------------------------------------------------------------ #
+    #  Shared Llama OCR + workflow conversion pipeline                   #
+    # ------------------------------------------------------------------ #
+    async def _run_llama_pipeline(self, image_path: str, cleanup: bool) -> dict:
+        """Appelle Llama OCR sur une image et convertit le workflow si présent.
+
+        Args:
+            image_path: Chemin de l'image à traiter.
+            cleanup: Si True, supprime l'image après traitement.
+        """
+        try:
+            ocr_result = await self._llama.process(image_path)
+        finally:
+            if cleanup and os.path.exists(image_path):
+                os.remove(image_path)
+
         workflow = ocr_result.workflow
         pre_graph_content = ocr_result.pre_graph_content
         post_graph_content = ocr_result.post_graph_content
         has_table = ocr_result.has_table
-
-        # Cleanup
-        if os.path.exists(image_path):
-            os.remove(image_path)
 
         content_type = "text"
         parts = []
 
         if pre_graph_content.strip():
             parts.append(pre_graph_content.strip())
+
         if workflow.strip():
             content_type = "workflow"
             try:
@@ -58,13 +102,22 @@ class PageProcessor:
                 raise WorkflowConversionException(
                     message=f"Azure GPT-4o workflow conversion failed: {str(e)}",
                     code="WORKFLOW_CONVERSION_ERROR",
-                    http_status=502
+                    http_status=502,
                 ) from e
+
         if post_graph_content.strip():
             parts.append(post_graph_content.strip())
 
+        full_text = "\n\n".join(parts)
+
+        # ── Construire tables_metadata depuis le texte OCR ──────────────
+        # y_position est None : les coordonnées ne sont pas disponibles
+        # depuis un résultat OCR pur (contrairement au pipeline Azure DI).
+        tables_metadata = TextExtractor.extract_tables_metadata_from_text(full_text)
+
         return {
-            "type": content_type,
-            "text": "\n\n".join(parts),
-            "has_table": has_table,
+            "type":            content_type,
+            "text":            full_text,
+            "has_table":       has_table,
+            "tables_metadata": tables_metadata,
         }

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi import Request
 
+from src.domain.models.ingest_response_model import IngestResponse
+
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
 
@@ -11,6 +13,7 @@ def get_ingest_use_case(request: Request):
 @router.post(
     "/",
     status_code=status.HTTP_200_OK,
+    response_model=IngestResponse,
     summary="Ingest a PDF document",
     description="Upload a PDF file to be processed through the full RAG ingestion pipeline: "
                 "load → classify → chunk → embed → index.",
@@ -18,7 +21,7 @@ def get_ingest_use_case(request: Request):
 async def ingest_document(
     file: UploadFile = File(..., description="PDF file to ingest"),
     use_case=Depends(get_ingest_use_case),
-) -> str:
+) -> IngestResponse:
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -34,11 +37,15 @@ async def ingest_document(
         )
 
     try:
-        use_case.ingest(file_bytes=file_bytes, filename=file.filename)
+        await use_case.ingest(file_bytes=file_bytes, filename=file.filename)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ingestion pipeline failed: {str(e)}",
         )
 
-    return "Document ingested successfully"
+    return IngestResponse(
+        message="Document ingested successfully",
+        filename=file.filename,
+        status="success"
+    )

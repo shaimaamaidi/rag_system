@@ -20,6 +20,7 @@ RULES APPLIED:
    title — the earlier ones are silently discarded (no paragraph is created for them).
    If no title page precedes a paragraph, title is None.
 """
+import re
 from typing import Any, Optional
 
 from src.domain.services.document_helpers import count_lines, count_sentences, normalize_heading, is_article_page, is_workflow_page, \
@@ -29,9 +30,33 @@ from src.domain.models.page_content_model import PageContent
 from src.domain.models.paragraph_model import Paragraph
 from src.domain.models.section_heading_model import SectionHeading
 
-# ---------------------------------------------------------------------------
-# Threshold: pages with at most this many non-empty lines are "title pages"
-# ---------------------------------------------------------------------------
+
+def _count_md_tables(text: str) -> int:
+    """Compte le nombre de tables Markdown dans un segment de texte."""
+    if not text:
+        return 0
+    matches = re.findall(r"(?:\|.*\|[ \t]*(?:\n|$))+", text)
+    return len(matches)
+
+
+def _filter_metadata_for_segment(text: str, all_metadata: list[Any]) -> list[Any]:
+    """
+    Retourne les entrées de table_metadata qui correspondent aux tables
+    réellement présentes dans ce segment de texte.
+
+    Stratégie :
+    - On compte le nombre de tables Markdown dans le segment.
+    - On retourne autant d'entrées depuis all_metadata (dans l'ordre).
+    - Les entrées déjà consommées sont retirées de all_metadata (mutation in-place).
+    """
+    n = _count_md_tables(text)
+    if n == 0 or not all_metadata:
+        return []
+    take = min(n, len(all_metadata))
+    result = all_metadata[:take]
+    del all_metadata[:take]
+    return result
+
 
 class DocumentSplitter:
 
@@ -117,7 +142,6 @@ class DocumentSplitter:
 
             text = "\n".join(current_text_parts).strip()
             if text:
-                # ← Factory used here
                 paragraphs.append(ParagraphFactory.create(
                     title          = active_title,
                     sub_title      = current_heading,
@@ -175,7 +199,6 @@ class DocumentSplitter:
                 _flush_pending_title()
                 page_header, text_chunk, has_tbl, table_metadata = payload
                 text = text_chunk.strip()
-                # ← Factory used here
                 paragraphs.append(ParagraphFactory.create_pre_heading(
                     active_title   = active_title,
                     page_header    = page_header,
@@ -302,9 +325,13 @@ class DocumentSplitter:
                     events.append(("text", (page_text, has_tbl, page_table_metadata(page))))
                 continue
 
-            first_heading_seen     = True
-            remaining_text         = page_text
-            page_has_table_emitted = False
+            first_heading_seen = True
+            remaining_text     = page_text
+
+            # ── pool de métadonnées à distribuer entre les segments ──────
+            # On travaille sur une copie mutable : _filter_metadata_for_segment
+            # consomme les entrées au fur et à mesure (pop depuis le début).
+            meta_pool = list(page_table_metadata(page))
 
             for h in page_headings:
                 h_content = h.content.strip()
@@ -312,14 +339,17 @@ class DocumentSplitter:
                 if idx != -1:
                     before = remaining_text[:idx].strip()
                     if before:
-                        events.append(("text", (before, has_tbl and not page_has_table_emitted, page_table_metadata(page))))
-                        page_has_table_emitted = True
+                        seg_meta = _filter_metadata_for_segment(before, meta_pool)
+                        seg_tbl  = bool(seg_meta) or (has_tbl and _count_md_tables(before) > 0)
+                        events.append(("text", (before, seg_tbl, seg_meta)))
                     events.append(("heading", (h_content, is_article)))
                     remaining_text = remaining_text[idx + len(h_content):].strip()
                 else:
                     events.append(("heading", (h_content, is_article)))
 
             if remaining_text:
-                events.append(("text", (remaining_text, has_tbl and not page_has_table_emitted, page_table_metadata(page))))
+                seg_meta = _filter_metadata_for_segment(remaining_text, meta_pool)
+                seg_tbl  = bool(seg_meta) or (has_tbl and _count_md_tables(remaining_text) > 0)
+                events.append(("text", (remaining_text, seg_tbl, seg_meta)))
 
         return events

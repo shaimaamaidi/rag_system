@@ -52,6 +52,7 @@ class DocumentEmbedding(EmbeddingPort):
                 c.embedding = self.get_embedding_vector(c.chunk_text)
             except Exception:
                 raise EmbeddingGenerationException(f"Failed to generate embedding for chunk {c.id}")
+        return  chunks
 
     def get_embedding_vector(self, text: str) -> List[float]:
         """

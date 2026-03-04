@@ -9,5 +9,5 @@ class VectorStorePort(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_embedding: List[float], top_k: int) -> List[Chunk]:
+    def search(self, query_embedding: List[float], top_k: int = 14) -> List[Chunk]:
         pass

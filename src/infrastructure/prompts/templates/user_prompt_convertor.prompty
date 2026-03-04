@@ -19,4 +19,4 @@ user:
 Convert the following Arabic flowchart into JSON following the system rules:
 
 --- MERMAID INPUT ---
-{mermaid_text}
+{{mermaid_text}}

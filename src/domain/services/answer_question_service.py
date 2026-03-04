@@ -60,7 +60,7 @@ class AnswerQuestionService(AskQuestionPort):
             ) from e
 
         try:
-            chunks = self.vector_store.search(question_embedding.vector, top_k=7)
+            chunks = self.vector_store.search(question_embedding.vector, top_k = 14)
         except AppException:
             raise
         except Exception as e:
@@ -103,6 +103,11 @@ class AnswerQuestionService(AskQuestionPort):
                     entry += f" {header}"
                 entry += f"\ntarget group(s): {chunk.target_group or 'N/A'}"
                 entry += f"\n{chunk.original_text}"
+
+                # ✅ Ajouter les métadonnées des tables si présentes
+                if chunk.has_table and chunk.table_metadata:
+                    import json
+                    entry += f"\ntables:\n{json.dumps(chunk.table_metadata, ensure_ascii=False, indent=2)}"
 
                 context_list.append(entry)
                 seen_paragraphs.add(chunk.paragraph_id)

@@ -1,11 +1,31 @@
+import re
 import uuid
-from typing import List
+from typing import List, Any
 
 from pathlib import Path
 
 from src.domain.models.chunk_model import Chunk
 from src.domain.models.paragraph_model import Paragraph
 from src.domain.services.document_category_extractor import DocumentCategoryExtractor
+
+
+def _count_md_tables(text: str) -> int:
+    """Compte le nombre de tables Markdown dans un segment de texte."""
+    if not text:
+        return 0
+    return len(re.findall(r"(?:\|.*\|[ \t]*(?:\n|$))+", text))
+
+
+def _metadata_for_chunk(chunk_text: str, all_metadata: List[Any]) -> List[Any]:
+    """
+    Retourne les entrées de table_metadata qui correspondent aux tables
+    réellement présentes dans ce chunk, dans l'ordre.
+    On prend min(n_tables_dans_text, len(all_metadata)) entrées depuis le début.
+    """
+    n = _count_md_tables(chunk_text)
+    if n == 0 or not all_metadata:
+        return []
+    return all_metadata[:min(n, len(all_metadata))]
 
 
 class SmartChunker:
@@ -47,6 +67,8 @@ class SmartChunker:
     # ── public entry point ────────────────────
 
     def chunk_paragraphs(self, paragraphs: List[Paragraph]) -> List[Chunk]:
+        if not paragraphs:
+            return []
         chunks: List[Chunk] = []
         for para in paragraphs:
             para_id = str(uuid.uuid4())
@@ -135,22 +157,12 @@ class SmartChunker:
     # ── overlap ───────────────────────────────
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
-        """
-        Prepend the last `overlap` chars of chunk[i-1] (ORIGINAL, not already
-        overlapped) to chunk[i].  This avoids cumulative duplication.
-
-        chunk[0]  -> unchanged
-        chunk[i]  -> chunks[i-1][-overlap:] + " " + chunks[i]   (i > 0)
-
-        The source is always the original `chunks` list, never the mutated one.
-        """
         if not chunks or self.overlap <= 0:
             return chunks
 
-        overlapped = [chunks[0]]  # first chunk untouched
+        overlapped = [chunks[0]]
 
         for i in range(1, len(chunks)):
-            # Always read from the ORIGINAL list to avoid snowball effect
             tail = chunks[i - 1][-self.overlap:]
             overlapped.append(tail + " " + chunks[i])
 
@@ -162,11 +174,14 @@ class SmartChunker:
         category = None
         if self.extractor_category:
             categories = self.extractor_category.extract_categories()
-            # name_doc peut avoir extension → on essaie avec et sans
             doc_key = Path(para.name_doc).stem if para.name_doc else ""
             category = categories.get(para.name_doc) or categories.get(doc_key)
 
-        return Chunk(
+        # Ne garder que les métadonnées des tables présentes dans ce chunk
+        chunk_table_metadata = _metadata_for_chunk(text, para.table_metadata or [])
+        chunk_has_table = bool(chunk_table_metadata)
+
+        chunk = Chunk(
             id=str(uuid.uuid4()),
             doc_name=para.name_doc,
             paragraph_id=para_id,
@@ -175,7 +190,8 @@ class SmartChunker:
             chunk_text=text,
             original_text=para.text,
             embedding=None,
-            has_table=para.has_table,
-            table_metadata=para.table_metadata.copy(),
+            has_table=chunk_has_table,
+            table_metadata=chunk_table_metadata,
             target_group=category,
         )
+        return chunk

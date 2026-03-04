@@ -35,4 +35,4 @@ class IngestDocumentUseCase(IngestDocumentsPort):
         Returns:
             None
         """
-        self.ingestion_service.ingest(documents_dir)
+        await self.ingestion_service.ingest(documents_dir)

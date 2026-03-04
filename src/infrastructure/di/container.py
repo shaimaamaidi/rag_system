@@ -34,7 +34,6 @@ class Container:
         self.search_client = AzureSearchClient()
         self.vector_store = AzureAISearchAdapter(client=self.search_client)
         self.answer_generator = AzureOpenAIAnswerGenerator(
-            azure_adapter=self.vector_store,
             prompt_provider=self.prompt_provider
         )
 
@@ -45,7 +44,7 @@ class Container:
             embedding=self.embedding_provider,
             vector_store=self.vector_store
         )
-        self.rag_service = AnswerQuestionService(
+        self.answer_service = AnswerQuestionService(
             embedding_model=self.embedding_provider,
             vector_store=self.vector_store,
             answer_generator=self.answer_generator
@@ -53,7 +52,7 @@ class Container:
 
     def _initialize_use_cases(self) -> None:
         self.ingest_use_case = IngestDocumentUseCase(self.ingestion_service)
-        self.ask_use_case = AskQuestionUseCase(self.rag_service)
+        self.ask_use_case = AskQuestionUseCase(self.answer_service)
 
     def _initialize_tools(self) -> None:
         self.search_tool = create_search_tool(self.ask_use_case)
