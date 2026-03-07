@@ -5,7 +5,6 @@ import os
 import logging
 from typing import Generator, Callable
 
-from azure.ai.agents.models import ToolSet, FunctionTool
 from azure.identity import ClientSecretCredential
 from azure.ai.projects import AIProjectClient
 

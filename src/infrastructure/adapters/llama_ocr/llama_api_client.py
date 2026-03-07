@@ -95,7 +95,7 @@ class LlamaApiClient:
                 http_status=502
             ) from e
     async def wait_for_completion(
-        self, job_id: str, max_retries: int = 20, sleep_seconds: int = 3
+        self, job_id: str, max_retries: int = 100, sleep_seconds: int = 10
     ) -> dict:
         """Poll a job until it completes, fails, or times out.
 

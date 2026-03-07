@@ -33,7 +33,7 @@ def test_extract_categories_success(monkeypatch, tmp_path):
     extractor = DocumentCategoryExtractor()
     result = extractor.extract_categories()
 
-    assert result == {"Doc1": "Cat1", "Doc2": "Cat2"}
+    assert result == {"Doc1": ["Cat1"], "Doc2": ["Cat2"]}
 
 
 def test_extract_categories_failure(monkeypatch):

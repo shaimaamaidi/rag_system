@@ -83,6 +83,7 @@ class AzureSearchClient:
                     type=SearchFieldDataType.String,
                     filterable=True,
                     sortable=True,
+                    facetable=True,
                 ),
                 SimpleField(
                     name="paragraph_id",
@@ -98,17 +99,11 @@ class AzureSearchClient:
                     filterable=True,
                 ),
                 SearchField(
-                    name="sub_title",
-                    type=SearchFieldDataType.String,
-                    searchable=True,
-                    filterable=True,
-                ),
-                SearchField(
                     name="target_group",
-                    type=SearchFieldDataType.String,
-                    searchable=True,
+                    type=SearchFieldDataType.Collection(SearchFieldDataType.String),
+                    searchable=False,
                     filterable=True,
-                    sortable=True,
+                    sortable=False,
                 ),
                 SearchField(
                     name="chunk_text",
@@ -118,7 +113,6 @@ class AzureSearchClient:
                 SearchField(
                     name="original_text",
                     type=SearchFieldDataType.String,
-                    searchable=True,
                     filterable=False,
                 ),
 
@@ -130,7 +124,7 @@ class AzureSearchClient:
                 SearchField(
                     name="table_metadata",
                     type=SearchFieldDataType.Collection(SearchFieldDataType.String),
-                    searchable=True,
+                    searchable=False,
                     filterable=False,
                 ),
 
@@ -164,7 +158,7 @@ class AzureSearchClient:
                                 SemanticField(field_name="chunk_text"),
                             ],
                             keywords_fields=[
-                                SemanticField(field_name="sub_title"),
+                                SemanticField(field_name="doc_name"),
                                 SemanticField(field_name="title"),
                             ],
                         ),
@@ -211,8 +205,7 @@ class AzureSearchClient:
             "doc_name":      chunk.doc_name,
             "paragraph_id":  chunk.paragraph_id,
             "title":         chunk.title or "",
-            "sub_title":     chunk.sub_title or "",
-            "target_group":  chunk.target_group or "",
+            "target_group":  chunk.target_group or [],
             "chunk_text":    chunk.chunk_text,
             "original_text": chunk.original_text,
             "embedding":     chunk.embedding,

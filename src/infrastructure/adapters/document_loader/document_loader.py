@@ -105,7 +105,7 @@ class DocumentLoader(DocumentLoaderPort):
 
         finally:
             if image_paths:
-                self._file_converter.clear(image_paths[0])
+                self._file_converter.clear(file_path)
                 logger.info("Cleared PPTX slides folder")
 
         return pages, []

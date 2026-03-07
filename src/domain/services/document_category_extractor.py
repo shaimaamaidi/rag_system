@@ -59,7 +59,8 @@ class DocumentCategoryExtractor:
                     and pd.notna(category)
                     and str(document_name).strip() != "اسم الوثيقة"
                 ):
-                    result[str(document_name).strip()] = str(category).strip()
+                    categories = [c.strip() for c in str(category).split("\n") if c.strip()]
+                    result[str(document_name).strip()] = categories
 
             logger.info("Category extraction completed successfully, %d categories found", len(result))
             return result

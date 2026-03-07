@@ -69,7 +69,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         try:
             logger.info("Searching for relevant chunks in vector store")
-            chunks = self.vector_store.search(question_embedding, top_k=20)
+            chunks = self.vector_store.search(question_clean, question_embedding, top_k=5)
             logger.info("Retrieved %d chunks from vector store", len(chunks))
         except AppException:
             raise
@@ -112,15 +112,13 @@ class AnswerQuestionService(AskQuestionPort):
                 header_parts = []
                 if chunk.title:
                     header_parts.append(chunk.title)
-                if chunk.sub_title:
-                    header_parts.append(chunk.sub_title)
 
                 header = " | ".join(header_parts) if header_parts else ""
 
                 entry = f"[{chunk.doc_name}]"
                 if header:
                     entry += f" {header}"
-                entry += f"\ntarget group(s): {chunk.target_group or 'N/A'}"
+                entry += f"\ntarget group(s): {', '.join(chunk.target_group) if chunk.target_group else 'N/A'}"
                 entry += f"\n{chunk.original_text}"
 
                 if chunk.has_table and chunk.table_metadata:

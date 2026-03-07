@@ -33,14 +33,15 @@ class AzureAISearchAdapter(VectorStorePort):
         """
         self.repository.upload_chunks(chunks)
 
-    def search(self, query_embedding: List[float], top_k: int = 14) -> List[Chunk]:
+    def search(self,query: str,  query_embedding: List[float], top_k: int = 5) -> List[Chunk]:
         """Search for the most relevant chunks.
 
+        :param query:
         :param query_embedding: Query embedding vector.
         :param top_k: Number of results to return.
         :return: List of relevant chunks.
         """
-        result= self.repository.semantic_search(query_embedding, top_k)
+        result= self.repository.semantic_search(query, query_embedding, top_k)
 
         logger.info("Semantic search returned %d chunks (top_k=%d)", len(result), top_k)
 

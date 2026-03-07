@@ -189,17 +189,21 @@ class SmartChunker:
         if self.extractor_category:
             categories = self.extractor_category.extract_categories()
             doc_key = Path(para.name_doc).stem if para.name_doc else ""
-            category = categories.get(para.name_doc) or categories.get(doc_key)
+            category = categories.get(para.name_doc) or categories.get(doc_key) or []
 
         chunk_table_metadata = _metadata_for_chunk(text, para.table_metadata or [])
         chunk_has_table = bool(chunk_table_metadata)
+        title = ""
+        if para.title:
+            title += para.title + " - "
+        if para.sub_title:
+            title += para.sub_title
 
         chunk = Chunk(
             id=str(uuid.uuid4()),
             doc_name=para.name_doc,
             paragraph_id=para_id,
-            title=para.title,
-            sub_title=para.sub_title,
+            title=title,
             chunk_text=text,
             original_text=para.text,
             embedding=None,

@@ -37,6 +37,9 @@ Example:
 - Original:  "كيف يتم الموافقة على الطلبات والوثائق؟"
 - Enhanced: "ما هي خطوات وإجراءات عملية الموافقة الرسمية على الطلبات والوثائق؟"
 
+- Original:  "ما عدد ساعات العمل الرسمية في رمضان؟"
+- Enhanced: "ما عدد ساعات العمل الرسمية في رمضان؟ ومن أي ساعة تبدأ الدوام وحتى أي ساعة تنتهي؟"
+
 ### STEP 2 — Search
 Call search_tool using the ENHANCED question — never the original raw question.
 

@@ -229,7 +229,7 @@ class FileConverter:
 
         try:
             powerpoint = win32com.client.Dispatch("PowerPoint.Application")
-            powerpoint.Visible = 0
+            powerpoint.Visible = 1
 
             prs = powerpoint.Presentations.Open(
                 pptx_path,

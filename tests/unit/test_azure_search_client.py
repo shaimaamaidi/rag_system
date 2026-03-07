@@ -24,8 +24,7 @@ def test_chunk_to_document():
             self.doc_name = "doc"
             self.paragraph_id = "p1"
             self.title = None
-            self.sub_title = "S"
-            self.target_group = ""
+            self.target_group = []
             self.chunk_text = "ct"
             self.original_text = "ot"
             self.embedding = [0.1]

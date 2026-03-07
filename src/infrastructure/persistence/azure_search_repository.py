@@ -58,11 +58,13 @@ class AzureSearchRepository:
 
     def semantic_search(
         self,
+        query,
         vector_query: List[float],
-        top_k: int = 14,
+        top_k: int = 5,
     ) -> List[Chunk]:
         """Perform a vector-based semantic search.
 
+        :param query:
         :param vector_query: Query embedding vector.
         :param top_k: Maximum number of results to return.
         :return: Matching chunks with populated fields.
@@ -78,14 +80,13 @@ class AzureSearchRepository:
             )
 
             results = self.search_client.search(
-                search_text=None,
+                search_text=query,
                 vector_queries=[vector_query_obj],
                 select=[
                     "chunk_id",
                     "doc_name",
                     "paragraph_id",
                     "title",
-                    "sub_title",
                     "target_group",
                     "chunk_text",
                     "original_text",
@@ -104,7 +105,6 @@ class AzureSearchRepository:
                     doc_name=r["doc_name"],
                     paragraph_id=r["paragraph_id"],
                     title=r.get("title"),
-                    sub_title=r.get("sub_title"),
                     target_group=r.get("target_group"),
                     chunk_text=r["chunk_text"],
                     original_text=r["original_text"],
@@ -121,3 +121,49 @@ class AzureSearchRepository:
             raise AzureSearchQueryException(
                 message=f"Vector search failed in Azure Cognitive Search: {str(e)}",
             ) from e
+
+    def get_distinct_doc_names(self) -> List[str]:
+        """Fetch distinct doc_name values using Azure Search facets."""
+
+        results = self.search_client.search(
+            search_text="*",
+            select=["doc_name"],
+        )
+
+        doc_names = set()
+
+        for r in results:
+            if r.get("doc_name"):
+                doc_names.add(r["doc_name"])
+
+        return list(doc_names)
+
+    from typing import List
+    from src.domain.services.document_chunking import Chunk
+
+    def get_chunks_by_doc_name(self) -> List[Chunk]:
+        """Return all chunks belonging to a specific document."""
+
+        results = self.search_client.search(
+            search_text="*",
+        )
+
+        chunks = []
+
+        for r in results:
+            if r.get("doc_name") == "نظام_العمل.pdf":
+                chunk = Chunk(
+                    id=r.get("chunk_id"),
+                    doc_name=r.get("doc_name"),
+                    paragraph_id=r.get("paragraph_id"),
+                    title=r.get("title"),
+                    target_group=r.get("target_group"),
+                    chunk_text=r.get("chunk_text"),
+                    original_text=r.get("original_text"),
+                    has_table=r.get("has_table"),
+                    table_metadata=r.get("table_metadata", []),
+                    embedding=None
+                )
+                chunks.append(chunk)
+
+        return chunks

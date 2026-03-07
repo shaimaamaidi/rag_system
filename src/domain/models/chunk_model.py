@@ -11,9 +11,8 @@ class Chunk:
     :ivar id: Unique chunk identifier.
     :ivar doc_name: Source document name.
     :ivar paragraph_id: Parent paragraph identifier.
-    :ivar title: Section title if available.
-    :ivar sub_title: Subsection title if available.
-    :ivar target_group: Target group or category label.
+    :ivar title: Section title .
+    :ivar target_group: List of target group names.
     :ivar chunk_text: Text content for the chunk.
     :ivar original_text: Original paragraph text.
     :ivar has_table: Whether the chunk includes table data.
@@ -24,8 +23,7 @@ class Chunk:
     doc_name: str
     paragraph_id: str
     title: Optional[str]
-    sub_title: Optional[str]
-    target_group: str
+    target_group: List[str]
     chunk_text: str
     original_text: str
     has_table: bool

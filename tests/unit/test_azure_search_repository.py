@@ -12,8 +12,7 @@ def _make_chunk(embedding):
         doc_name="doc",
         paragraph_id="p1",
         title=None,
-        sub_title=None,
-        target_group="",
+        target_group=[],
         chunk_text="text",
         original_text="text",
         has_table=False,
@@ -64,8 +63,7 @@ def test_semantic_search_maps_results():
                     "doc_name": "doc",
                     "paragraph_id": "p1",
                     "title": "T",
-                    "sub_title": "S",
-                    "target_group": "TG",
+                    "target_group": ["TG"],
                     "chunk_text": "ct",
                     "original_text": "ot",
                     "has_table": True,
@@ -78,7 +76,7 @@ def test_semantic_search_maps_results():
             return DummySearchClient()
 
     repo = AzureSearchRepository(DummyClient())
-    chunks = repo.semantic_search([0.1, 0.2], top_k=1)
+    chunks = repo.semantic_search("query", [0.1, 0.2], top_k=1)
 
     assert len(chunks) == 1
     assert chunks[0].doc_name == "doc"
@@ -95,4 +93,4 @@ def test_semantic_search_failure():
 
     repo = AzureSearchRepository(DummyClient())
     with pytest.raises(AzureSearchQueryException):
-        repo.semantic_search([0.1])
+        repo.semantic_search("query", [0.1])

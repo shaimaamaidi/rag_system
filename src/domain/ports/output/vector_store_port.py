@@ -17,9 +17,10 @@ class VectorStorePort(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_embedding: List[float], top_k: int = 14) -> List[Chunk]:
+    def search(self,query: str, query_embedding: List[float], top_k: int = 5) -> List[Chunk]:
         """Search for similar chunks by embedding.
 
+        :param query:
         :param query_embedding: Query embedding vector.
         :param top_k: Maximum number of results to return.
         :return: Matching chunks.

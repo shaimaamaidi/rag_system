@@ -10,14 +10,13 @@ def test_search_adapter_store_and_search():
         def upload_chunks(self, chunks):
             self.uploaded = list(chunks)
 
-        def semantic_search(self, vector, top_k):
+        def semantic_search(self, _query, vector, top_k):
             return [Chunk(
                 id="c1",
                 doc_name="doc",
                 paragraph_id="p1",
                 title=None,
-                sub_title=None,
-                target_group="",
+                target_group=[],
                 chunk_text="ct",
                 original_text="ot",
                 has_table=False,
@@ -36,8 +35,7 @@ def test_search_adapter_store_and_search():
         doc_name="doc",
         paragraph_id="p1",
         title=None,
-        sub_title=None,
-        target_group="",
+        target_group=[],
         chunk_text="ct",
         original_text="ot",
         has_table=False,
@@ -46,7 +44,7 @@ def test_search_adapter_store_and_search():
     )
 
     adapter.store_chunks([chunk])
-    result = adapter.search([0.1], top_k=1)
+    result = adapter.search("query", [0.1], top_k=1)
 
     assert adapter.repository.uploaded[0].id == "c1"
     assert result[0].id == "c1"
