@@ -9,7 +9,6 @@ from src.domain.exceptions.question_empty_exception import QuestionEmptyExceptio
 from src.domain.models.chunk_model import Chunk
 from src.domain.ports.input.ask_question_port import AskQuestionPort
 from src.domain.ports.output.embedding_port import EmbeddingPort
-from src.domain.ports.output.answer_generator_port import AnswerGeneratorPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
 from src.infrastructure.logging.logger import setup_logger
 
@@ -22,24 +21,20 @@ class AnswerQuestionService(AskQuestionPort):
 
     :param embedding_model: Provider for embedding vectors.
     :param vector_store: Vector store for similarity search.
-    :param answer_generator: Generator for final answers.
     """
 
     def __init__(
         self,
         embedding_model: EmbeddingPort,
         vector_store: VectorStorePort,
-        answer_generator: AnswerGeneratorPort,
     ):
         """Initialize the service.
 
         :param embedding_model: Component to generate embeddings for questions.
         :param vector_store: Component to search for relevant chunks.
-        :param answer_generator: Component to generate answers from retrieved context.
         """
         self.embedding = embedding_model
         self.vector_store = vector_store
-        self.answer_generator = answer_generator
         logger.info("AnswerQuestionService initialized with embedding, vector store, and answer generator")
 
     def execute(self, question: str) -> str:
@@ -69,7 +64,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         try:
             logger.info("Searching for relevant chunks in vector store")
-            chunks = self.vector_store.search(question_clean, question_embedding, top_k=5)
+            chunks = self.vector_store.search(question_clean, question_embedding, top_k=6)
             logger.info("Retrieved %d chunks from vector store", len(chunks))
         except AppException:
             raise
@@ -86,9 +81,7 @@ class AnswerQuestionService(AskQuestionPort):
         try:
             context = AnswerQuestionService._get_context_from_chunks(chunks)
             logger.info("Generating answer from retrieved context")
-            answer = self.answer_generator.generate_answer(context, question_clean)
-            logger.info("Answer generated successfully")
-            return answer
+            return context
         except AppException:
             raise
         except Exception as e:

@@ -9,12 +9,11 @@ from src.domain.services.document_category_extractor import DocumentCategoryExtr
 from src.domain.services.document_chunking import SmartChunker
 from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
 from src.infrastructure.adapters.agent.agent_adapter import AzureAgentAdapter
-from src.infrastructure.adapters.answer_generation.azure_answer_generator import AzureOpenAIAnswerGenerator
 from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.adapters.document_embedding.document_embedding import DocumentEmbedding
 from src.infrastructure.adapters.document_loader.document_loader import DocumentLoader
 from src.infrastructure.adapters.search_adapter.azure_search_adapter import AzureAISearchAdapter
-from src.infrastructure.adapters.tools.search_tool import create_search_tool
+from src.infrastructure.adapters.tools.search_tool import RAGSearchTool
 from src.infrastructure.persistence.azure_search_client import AzureSearchClient
 from src.infrastructure.prompts.loader.prompt_loader import PromptyLoader
 
@@ -66,11 +65,6 @@ class Container:
         self.vector_store = AzureAISearchAdapter(client=self.search_client)
         logger.info("Vector store adapter initialized")
 
-        self.answer_generator = AzureOpenAIAnswerGenerator(
-            prompt_provider=self.prompt_provider
-        )
-        logger.info("Answer generator initialized")
-
 
     def _initialize_services(self) -> None:
         """Create domain services.
@@ -88,7 +82,6 @@ class Container:
         self.answer_service = AnswerQuestionService(
             embedding_model=self.embedding_provider,
             vector_store=self.vector_store,
-            answer_generator=self.answer_generator
         )
         logger.info("Answer question service initialized")
 
@@ -108,7 +101,7 @@ class Container:
 
         :return: None.
         """
-        self.search_tool = create_search_tool(self.ask_use_case)
+        self.search_tool = RAGSearchTool(self.ask_use_case)
         logger.info("Search tool initialized")
 
     def __repr__(self) -> str:

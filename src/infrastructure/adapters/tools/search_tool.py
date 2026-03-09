@@ -1,31 +1,31 @@
-"""Factory for creating a RAG search tool callable."""
+"""RAG search tool implementation."""
 import logging
 
 from src.application.use_cases.answer_question_pipeline import AskQuestionUseCase
+from src.domain.ports.output.search_tool_port import SearchToolPort
 from src.infrastructure.logging.logger import setup_logger
 
 setup_logger()
 logger = logging.getLogger(__name__)
 
 
-def create_search_tool(use_case: AskQuestionUseCase):
-    """Create a search tool callable backed by the ask use case.
+class RAGSearchTool(SearchToolPort):
+    """Search tool backed by the RAG ask use case."""
 
-    :param use_case: Use case responsible for answering questions.
-    :return: Callable that accepts a question and returns an answer.
-    """
+    def __init__(self, use_case: AskQuestionUseCase) -> None:
+        """Initialize with the ask use case.
 
-    def search_tool(question: str) -> str:
-        """Answer a question using the RAG pipeline.
+        :param use_case: Use case responsible for answering questions.
+        """
+        self.use_case = use_case
+
+    def __call__(self, question: str) -> str:
+        """Execute the search tool.
 
         :param question: Question to answer.
         :return: Answer generated from retrieved documents.
         """
         logger.info("RAG tool received question: %s", question)
-
-        answer = use_case.execute(question)
-
-        logger.info("RAG tool generated answer (length=%d)", len(answer))
-
-        return answer
-    return search_tool
+        context = self.use_case.execute(question)
+        logger.info("RAG tool generated context (length=%d)", len(context))
+        return context

@@ -3,7 +3,7 @@
 import json
 import os
 import logging
-from typing import Generator, Callable
+from typing import Generator
 
 from azure.identity import ClientSecretCredential
 from azure.ai.projects import AIProjectClient
@@ -11,6 +11,7 @@ from azure.ai.projects import AIProjectClient
 from src.domain.exceptions.azure_agent_config_exception import AzureAgentConfigException
 from src.domain.exceptions.azure_agent_run_exception import AzureAgentRunException
 from src.domain.ports.output.prompt_provider_port import PromptProviderPort
+from src.domain.ports.output.search_tool_port import SearchToolPort
 from src.infrastructure.adapters.agent.event_handler import EventHandler
 from src.infrastructure.logging.logger import setup_logger
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 class AzureAgentAdapter:
     """Adapter for Azure AI Agents with streaming and tool execution."""
 
-    def __init__(self, search_tool: Callable[[str], dict], prompt_provider: PromptProviderPort):
+    def __init__(self, search_tool: SearchToolPort, prompt_provider: PromptProviderPort):
         """Initialize the adapter and Azure client.
 
         :param search_tool: Callable tool used by the agent.
@@ -79,7 +80,11 @@ class AzureAgentAdapter:
 
         try:
             with self.project_client.agents.runs.stream(
-                thread_id=thread.id, agent_id=self.agent_id, event_handler=event_handler
+                thread_id=thread.id,
+                agent_id=self.agent_id,
+                event_handler=event_handler,
+                tool_choice={"type": "function", "function": {"name": "search_tool"}},
+
             ) as stream:
 
                 for raw_event in stream:
@@ -126,6 +131,7 @@ class AzureAgentAdapter:
 
                             tool_outputs.append({"tool_call_id": tool_call.id, "output": output})
 
+                        print(tool_outputs)
                         self.project_client.agents.runs.submit_tool_outputs_stream(
                             thread_id=thread.id, run_id=run_data.id, tool_outputs=tool_outputs, event_handler=event_handler
                         )
@@ -188,7 +194,7 @@ class AzureAgentAdapter:
             raise ValueError("Agent not initialised !")
 
         try:
-            print("\n📘 Agent's instructions :")
+            print("\n Agent's instructions :")
             instructions = getattr(self.agent, "instructions", None)
             if instructions:
                 print(instructions)
@@ -237,12 +243,20 @@ class AzureAgentAdapter:
                 "type": "function",
                 "function": {
                     "name": "search_tool",
-                    "description": "Cherche la réponse dans BDD.",
+                    "description": (
+                        "Fetches relevant chunks from the internal knowledge base "
+                        "based on the ENHANCED question. "
+                    ),
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "question": {
-                                "type": "string"
+                                "type": "string",
+                                "description": (
+                                    "The question reformulated/enhanced by the agent. "
+                                    "DO NOT use the original raw question."
+                                )
+
                             }
                         },
                         "required": ["question"]
@@ -252,7 +266,7 @@ class AzureAgentAdapter:
             }
         ]
 
-        # 3️⃣ Instructions pour l'agent
+        # Instructions pour l'agent
         instructions = self.prompt_provider.get_agent_instructions()
 
         return tools_json, instructions

@@ -35,12 +35,6 @@ class PromptyLoader(PromptProviderPort):
 
     @staticmethod
     def _parse_prompty_file(file_path: Path) -> Dict[str, Any]:
-        """Parse a .prompty file into metadata and content.
-
-        :param file_path: Path to the .prompty file.
-        :return: Parsed metadata and content mapping.
-        :raises ValueError: If the file format is invalid.
-        """
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
@@ -50,6 +44,9 @@ class PromptyLoader(PromptProviderPort):
 
         metadata = yaml.safe_load(parts[1])
         prompt_content = '---'.join(parts[2:]).strip()
+
+        role_pattern = re.compile(r'^(system|user|assistant)\s*:\s*\n', re.IGNORECASE)
+        prompt_content = role_pattern.sub('', prompt_content).strip()
 
         return {
             'metadata': metadata,
@@ -101,27 +98,13 @@ class PromptyLoader(PromptProviderPort):
         template = env.from_string(prompt_content)
         return template.render(**kwargs)
 
-    def get_system_prompt(self, prompt_type: str) -> str:
+    def get_system_convertor_prompt(self) -> str:
         """Return a system prompt by type.
 
-        :param prompt_type: Prompt type key.
         :return: System prompt content.
         """
-        prompt_name = f"system_prompt_{prompt_type}"
+        prompt_name = "system_prompt_convertor"
         return self._load_prompt(prompt_name)
-
-    def get_user_generator_prompt(self, context: str, question: str) -> str:
-        """Return a user prompt for answer generation.
-
-        :param context: Retrieved context.
-        :param question: User question.
-        :return: User prompt content.
-        """
-        return self._load_prompt(
-            "user_prompt_answer_generator",
-            context=context,
-            question=question,
-        )
 
     def get_user_convertor_prompt(self, mermaid_text: str) -> str:
         """Return a user prompt for workflow conversion.
@@ -135,8 +118,5 @@ class PromptyLoader(PromptProviderPort):
         )
 
     def get_agent_instructions(self) -> str:
-        """Return instructions for the agent.
-
-        :return: Agent instruction content.
-        """
+        """Return instructions for the agent."""
         return self._load_prompt("agent_instructions")

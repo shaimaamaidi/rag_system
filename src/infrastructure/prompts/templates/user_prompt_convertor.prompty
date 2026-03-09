@@ -18,5 +18,7 @@ version: 1.0.0
 user:
 Convert the following Arabic flowchart into JSON following the system rules:
 
---- MERMAID INPUT ---
+---
+
+##MERMAID INPUT
 {{mermaid_text}}
