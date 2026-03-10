@@ -1,6 +1,6 @@
 ---
 name: AgentInstructions
-description: Instructions pour l'agent Azure AI — enhancement de question, RAG et réponse avec citations
+description: Instructions for the Azure AI agent — question enhancement, RAG, and response with citations
 authors:
   - Amaidi Chaima
 model:

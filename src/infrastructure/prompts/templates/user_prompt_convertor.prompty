@@ -1,6 +1,6 @@
 ---
 name: WorkflowExtractionArabic
-description: Agent spécialisé dans l'extraction de workflows BPMN / Mermaid en JSON depuis des diagrammes en arabe
+description: Agent specialized in extracting BPMN / Mermaid workflows into JSON from diagrams in Arabic
 authors:
   - Amaidi Chaima
 model:
@@ -16,7 +16,7 @@ tags:
 version: 1.0.0
 ---
 user:
-Convert the following Arabic flowchart into JSON following the system rules:
+Convert the following Arabic flowchart into JSON following the system instructions:
 
 ---
 
