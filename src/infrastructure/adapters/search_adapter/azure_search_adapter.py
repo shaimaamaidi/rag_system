@@ -33,7 +33,7 @@ class AzureAISearchAdapter(VectorStorePort):
         """
         self.repository.upload_chunks(chunks)
 
-    def search(self,query: str,  query_embedding: List[float], top_k: int = 6) -> List[Chunk]:
+    def search(self,query: str,  query_embedding: List[float], top_k: int = 7) -> List[Chunk]:
         """Search for the most relevant chunks.
 
         :param query:

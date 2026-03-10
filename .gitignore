@@ -46,4 +46,5 @@ tmp_images/
 # Data folders
 data/
 data_test/
+extra_data/
 

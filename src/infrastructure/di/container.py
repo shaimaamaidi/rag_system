@@ -9,6 +9,7 @@ from src.domain.services.document_category_extractor import DocumentCategoryExtr
 from src.domain.services.document_chunking import SmartChunker
 from src.domain.services.ingestion_pipeline_service import DocumentIngestionService
 from src.infrastructure.adapters.agent.agent_adapter import AzureAgentAdapter
+from src.infrastructure.adapters.chunk_relevance_classifier.chunk_relevance_classifier import ChunkRelevanceClassifier
 from src.infrastructure.logging.logger import setup_logger
 from src.infrastructure.adapters.document_embedding.document_embedding import DocumentEmbedding
 from src.infrastructure.adapters.document_loader.document_loader import DocumentLoader
@@ -65,6 +66,8 @@ class Container:
         self.vector_store = AzureAISearchAdapter(client=self.search_client)
         logger.info("Vector store adapter initialized")
 
+        self.chunk_classifier = ChunkRelevanceClassifier(prompt_provider=self.prompt_provider)
+
 
     def _initialize_services(self) -> None:
         """Create domain services.
@@ -82,6 +85,7 @@ class Container:
         self.answer_service = AnswerQuestionService(
             embedding_model=self.embedding_provider,
             vector_store=self.vector_store,
+            chunk_classifier=self.chunk_classifier,
         )
         logger.info("Answer question service initialized")
 

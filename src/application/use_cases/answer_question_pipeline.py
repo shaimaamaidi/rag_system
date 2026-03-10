@@ -24,13 +24,14 @@ class AskQuestionUseCase(AskQuestionPort):
         self.answer_question_service = answer_question_service
         logger.info("AskQuestionUseCase initialized with AnswerQuestionService")
 
-    def execute(self, question: str) -> str:
+    def execute(self, question: str, enhancement_question: str) -> str:
         """Execute the question-answering workflow.
 
+        :param enhancement_question:
         :param question: Question text provided by the caller.
         :return: Generated answer text.
         """
         logger.info("Executing question: %s", question)
-        answer = self.answer_question_service.execute(question)
+        answer = self.answer_question_service.execute(question, enhancement_question)
         logger.info("Question executed successfully")
         return answer

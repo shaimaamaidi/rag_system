@@ -73,7 +73,7 @@ class AzureWorkflowConverter(WorkflowConverterPort):
                 messages=[
                     ChatCompletionSystemMessageParam(
                         role="system",
-                        content=self.prompt_provider.get_system_prompt()
+                        content=self.prompt_provider.get_system_prompt("convertor")
                     ),
                     ChatCompletionUserMessageParam(
                         role="user",

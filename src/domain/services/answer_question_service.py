@@ -8,6 +8,7 @@ from src.domain.exceptions.app_exception import AppException
 from src.domain.exceptions.question_empty_exception import QuestionEmptyException
 from src.domain.models.chunk_model import Chunk
 from src.domain.ports.input.ask_question_port import AskQuestionPort
+from src.domain.ports.output.chunk_relevance_classifier_port import ChunkRelevanceClassifierPort
 from src.domain.ports.output.embedding_port import EmbeddingPort
 from src.domain.ports.output.vector_store_port import VectorStorePort
 from src.infrastructure.logging.logger import setup_logger
@@ -27,6 +28,7 @@ class AnswerQuestionService(AskQuestionPort):
         self,
         embedding_model: EmbeddingPort,
         vector_store: VectorStorePort,
+        chunk_classifier: ChunkRelevanceClassifierPort
     ):
         """Initialize the service.
 
@@ -35,11 +37,13 @@ class AnswerQuestionService(AskQuestionPort):
         """
         self.embedding = embedding_model
         self.vector_store = vector_store
+        self.chunk_classifier = chunk_classifier
         logger.info("AnswerQuestionService initialized with embedding, vector store, and answer generator")
 
-    def execute(self, question: str) -> str:
+    def execute(self, question: str, enhancement_question: str) -> str:
         """Execute the question-answering flow.
 
+        :param enhancement_question:
         :param question: Question text provided by the user.
         :return: Generated answer.
         :raises QuestionEmptyException: If the question is empty or whitespace.
@@ -49,10 +53,12 @@ class AnswerQuestionService(AskQuestionPort):
             logger.warning("Empty question received")
             raise QuestionEmptyException(message="Question cannot be empty")
 
+        enhancement_question_clean = enhancement_question.strip()
+        question_clean = question.strip()
+
         try:
-            question_clean = question.strip()
-            logger.info("Generating embedding for question: %s", question_clean)
-            question_embedding = self.embedding.get_embedding_vector(question_clean)
+            logger.info("Generating embedding for question: %s", enhancement_question_clean)
+            question_embedding = self.embedding.get_embedding_vector(enhancement_question_clean)
             logger.info("Question embedding generated successfully")
         except AppException:
             raise
@@ -64,7 +70,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         try:
             logger.info("Searching for relevant chunks in vector store")
-            chunks = self.vector_store.search(question_clean, question_embedding, top_k=6)
+            chunks = self.vector_store.search(enhancement_question_clean, question_embedding, top_k=5)
             logger.info("Retrieved %d chunks from vector store", len(chunks))
         except AppException:
             raise
@@ -79,8 +85,24 @@ class AnswerQuestionService(AskQuestionPort):
             raise AnswerGenerationException(message="No relevant chunks found for this question")
 
         try:
-            context = AnswerQuestionService._get_context_from_chunks(chunks)
+            logger.info("Classifying chunks by relevance")
+            logger.info(self._get_context_from_chunks(chunks))
+            chunks_retrieved = self.chunk_classifier.classify(question_clean, enhancement_question_clean, chunks)
+            logger.info("Classification done: %d relevant chunks kept", len(chunks_retrieved))
+        except AppException:
+            raise
+        except Exception as e:
+            logger.exception("Failed to classify chunks")
+            raise AnswerGenerationException(message=f"Failed to classify chunks: {str(e)}") from e
+
+        if not chunks_retrieved:
+            logger.warning("No chunks rated VERY HIGH or HIGH after classification")
+            raise AnswerGenerationException(message="No relevant chunks found for this question")
+
+        try:
+            context = AnswerQuestionService._get_context_from_chunks(chunks_retrieved)
             logger.info("Generating answer from retrieved context")
+            logger.info("Answer generated successfully")
             return context
         except AppException:
             raise
@@ -99,16 +121,19 @@ class AnswerQuestionService(AskQuestionPort):
         """
         context_list = []
         seen_paragraphs = set()
+        chunk_number = 0
 
         for chunk in chunks:
             if chunk.paragraph_id not in seen_paragraphs:
+                chunk_number += 1
                 header_parts = []
                 if chunk.title:
                     header_parts.append(chunk.title)
 
                 header = " | ".join(header_parts) if header_parts else ""
 
-                entry = f"[{chunk.doc_name}]"
+                entry = f"### CHUNK {chunk_number}\n"
+                entry += f"[{chunk.doc_name}]"
                 if header:
                     entry += f" {header}"
                 entry += f"\ntarget group(s): {', '.join(chunk.target_group) if chunk.target_group else 'N/A'}"
@@ -121,5 +146,7 @@ class AnswerQuestionService(AskQuestionPort):
                 context_list.append(entry)
                 seen_paragraphs.add(chunk.paragraph_id)
 
-        logger.info("Context assembled from %d chunks", len(context_list))
-        return "\n\n".join(context_list)
+        total = len(context_list)
+        header_line = f"TOTAL CHUNKS: {total}\n\n"
+        logger.info("Context assembled from %d chunks", total)
+        return header_line + "\n\n".join(context_list)

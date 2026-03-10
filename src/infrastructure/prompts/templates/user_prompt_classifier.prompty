@@ -1,0 +1,35 @@
+---
+name: ChunkRelevanceClassificationUser
+description: User prompt providing question and retrieved chunks for relevance classification
+authors:
+  - Amaidi Chaima
+model:
+  api: chat
+  configuration:
+    type: azure_openai
+tags:
+  - rag
+  - retrieval
+  - chunk
+  - classification
+  - relevance
+version: 1.0.0
+---
+
+user:
+Classify the relevance of the following retrieved chunks with respect to the enhanced question.
+
+---
+
+## QUESTION
+{{question}}
+
+---
+
+## ENHANCED QUESTION
+{{enhanced_question}}
+
+---
+
+## RETRIEVED CHUNKS
+{{chunks}}

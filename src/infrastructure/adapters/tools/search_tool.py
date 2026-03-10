@@ -19,13 +19,13 @@ class RAGSearchTool(SearchToolPort):
         """
         self.use_case = use_case
 
-    def __call__(self, question: str) -> str:
+    def __call__(self, question: str, enhancement_question: str) -> str:
         """Execute the search tool.
 
         :param question: Question to answer.
         :return: Answer generated from retrieved documents.
         """
         logger.info("RAG tool received question: %s", question)
-        context = self.use_case.execute(question)
+        context = self.use_case.execute(question, enhancement_question)
         logger.info("RAG tool generated context (length=%d)", len(context))
         return context

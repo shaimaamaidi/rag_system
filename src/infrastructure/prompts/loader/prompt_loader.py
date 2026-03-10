@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import yaml
 import re
 from jinja2 import Environment
@@ -98,13 +98,21 @@ class PromptyLoader(PromptProviderPort):
         template = env.from_string(prompt_content)
         return template.render(**kwargs)
 
-    def get_system_convertor_prompt(self) -> str:
+    def get_system_prompt(self, name: str) -> str:
         """Return a system prompt by type.
 
         :return: System prompt content.
         """
-        prompt_name = "system_prompt_convertor"
+        prompt_name = f"system_prompt_{name}"
         return self._load_prompt(prompt_name)
+
+    def get_user_classifier_prompt(self, question: str, enhanced_question: str, chunks: List[dict]) -> str:
+        return self._load_prompt(
+            "user_prompt_classifier",
+            question=question,
+            enhanced_question=enhanced_question,
+            chunks=chunks
+        )
 
     def get_user_convertor_prompt(self, mermaid_text: str) -> str:
         """Return a user prompt for workflow conversion.

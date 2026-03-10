@@ -7,9 +7,10 @@ class AskQuestionPort(ABC):
     """Abstract interface for question answering."""
 
     @abstractmethod
-    def execute(self, question: str) -> str:
+    def execute(self, question: str, enhancement_question: str) -> str:
         """Return an answer for the provided question.
 
+        :param enhancement_question:
         :param question: Question to answer.
         :return: Answer text.
         """

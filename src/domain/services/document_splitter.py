@@ -355,17 +355,28 @@ class DocumentSplitter:
             for h in page_headings:
                 h_content = h.content.strip()
                 idx       = remaining_text.find(h_content)
-                if idx != -1:
+                if idx == -1:
+                    # Essai avec heading nettoyé (sans annotations comme ملغاة)
+                    import re
+                    h_clean = re.sub(r'\s*\(.*?\)', '', h_content).strip()
+                    idx = remaining_text.find(h_clean)
+                    if idx != -1:
+                        h_content_used = h_clean
+                    else:
+                        h_content_used = h_content
+                else:
+                    h_content_used = h_content
+
+                if idx != -1 :
                     before = remaining_text[:idx].strip()
                     if before:
                         seg_meta = filter_metadata_for_segment(before, meta_pool)
-                        seg_tbl  = bool(seg_meta) or (has_tbl and count_md_tables(before) > 0)
+                        seg_tbl = bool(seg_meta) or (has_tbl and count_md_tables(before) > 0)
                         events.append(("text", (before, seg_tbl, seg_meta)))
                     events.append(("heading", (h_content, is_article)))
-                    remaining_text = remaining_text[idx + len(h_content):].strip()
+                    remaining_text = remaining_text[idx + len(h_content_used):].strip()
                 else:
                     events.append(("heading", (h_content, is_article)))
-
             if remaining_text:
                 seg_meta = filter_metadata_for_segment(remaining_text, meta_pool)
                 seg_tbl  = bool(seg_meta) or (has_tbl and count_md_tables(remaining_text) > 0)

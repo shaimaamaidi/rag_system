@@ -250,16 +250,21 @@ class AzureAgentAdapter:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "question": {
-                                "type": "string",
-                                "description": (
-                                    "The question reformulated/enhanced by the agent. "
-                                    "DO NOT use the original raw question."
-                                )
-
-                            }
+                             "question": {
+                            "type": "string",
+                            "description": (
+                                "The original question as asked by the user."
+                            )
                         },
-                        "required": ["question"]
+                        "enhancement_question": {
+                            "type": "string",
+                            "description": (
+                                "The question reformulated/enhanced by the agent to maximize search relevance. "
+                                "DO NOT use the original raw question here."
+                            )
+                        }
+                        },
+                        "required": ["question", "enhancement_question"]
                     }
                 },
                 "callable": self.search_tool
