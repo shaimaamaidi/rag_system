@@ -25,14 +25,14 @@ def test_ask_use_case_calls_service():
         def __init__(self):
             self.called = None
 
-        def execute(self, question):
-            self.called = question
+        def execute(self, question, enhancement_question):
+            self.called = (question, enhancement_question)
             return "ok"
 
     svc = DummyService()
     use_case = AskQuestionUseCase(svc)
 
-    result = use_case.execute("hi")
+    result = use_case.execute("hi", "enhanced")
 
     assert result == "ok"
-    assert svc.called == "hi"
+    assert svc.called == ("hi", "enhanced")

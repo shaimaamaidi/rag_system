@@ -14,7 +14,7 @@ class _EmbedResult:
 def test_execute_empty_question():
     service = AnswerQuestionService(None, None, None)
     with pytest.raises(QuestionEmptyException):
-        service.execute("   ")
+        service.execute("   ", "enh")
 
 
 def test_execute_embedding_error():
@@ -22,9 +22,13 @@ def test_execute_embedding_error():
         def get_embedding_vector(self, _):
             raise RuntimeError("fail")
 
-    service = AnswerQuestionService(DummyEmbedding(), None, None)
+    class DummyClassifier:
+        def classify(self, *_args, **_kwargs):
+            return []
+
+    service = AnswerQuestionService(DummyEmbedding(), None, DummyClassifier())
     with pytest.raises(AnswerGenerationException):
-        service.execute("hello")
+        service.execute("hello", "enhanced")
 
 
 def test_execute_search_error():
@@ -36,9 +40,13 @@ def test_execute_search_error():
         def search(self, *_args, **_kwargs):
             raise RuntimeError("fail")
 
-    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), None)
+    class DummyClassifier:
+        def classify(self, *_args, **_kwargs):
+            return []
+
+    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyClassifier())
     with pytest.raises(AnswerGenerationException):
-        service.execute("hello")
+        service.execute("hello", "enhanced")
 
 
 def test_execute_no_chunks():
@@ -50,9 +58,13 @@ def test_execute_no_chunks():
         def search(self, *_args, **_kwargs):
             return []
 
-    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), None)
+    class DummyClassifier:
+        def classify(self, *_args, **_kwargs):
+            return []
+
+    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyClassifier())
     with pytest.raises(AnswerGenerationException):
-        service.execute("hello")
+        service.execute("hello", "enhanced")
 
 
 def test_execute_success_with_tables():
@@ -60,31 +72,33 @@ def test_execute_success_with_tables():
         def get_embedding_vector(self, _):
             return _EmbedResult([0.1])
 
+    chunks = [
+        Chunk(
+            id="c1",
+            doc_name="doc",
+            paragraph_id="p1",
+            title="Title",
+            target_group=["TG"],
+            chunk_text="chunk",
+            original_text="orig",
+            has_table=True,
+            table_metadata=[{"a": 1}],
+            embedding=None,
+        )
+    ]
+
     class DummyStore:
         def search(self, *_args, **_kwargs):
-            return [
-                Chunk(
-                    id="c1",
-                    doc_name="doc",
-                    paragraph_id="p1",
-                    title="Title",
-                    target_group=["TG"],
-                    chunk_text="chunk",
-                    original_text="orig",
-                    has_table=True,
-                    table_metadata=[{"a": 1}],
-                    embedding=None,
-                )
-            ]
+            return chunks
 
-    class DummyGenerator:
-        def generate_answer(self, context, question):
-            assert "[doc]" in context
-            assert "tables" in context
-            return "answer"
+    class DummyClassifier:
+        def classify(self, *_args, **_kwargs):
+            return chunks
 
-    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyGenerator())
-    assert service.execute("hello") == "answer"
+    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyClassifier())
+    context = service.execute("hello", "enhanced")
+    assert "[doc]" in context
+    assert "tables" in context
 
 
 def test_get_context_from_chunks_dedup():

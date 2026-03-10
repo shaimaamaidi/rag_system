@@ -26,11 +26,10 @@ def test_question_pipeline_integration():
                 )
             ]
 
-    class DummyGenerator:
-        def generate_answer(self, context, question):
-            assert "[doc]" in context
-            assert question == "hello"
-            return "answer"
+    class DummyClassifier:
+        def classify(self, *_args, **_kwargs):
+            return DummyStore().search()
 
-    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyGenerator())
-    assert service.execute("hello") == "answer"
+    service = AnswerQuestionService(DummyEmbedding(), DummyStore(), DummyClassifier())
+    context = service.execute("hello", "enhanced")
+    assert "[doc]" in context

@@ -1,4 +1,4 @@
-from src.infrastructure.adapters.tools.search_tool import create_search_tool
+from src.infrastructure.adapters.tools.search_tool import RAGSearchTool
 
 
 def test_search_tool_calls_use_case():
@@ -6,14 +6,14 @@ def test_search_tool_calls_use_case():
         def __init__(self):
             self.called = None
 
-        def execute(self, question):
-            self.called = question
+        def execute(self, question, enhancement_question):
+            self.called = (question, enhancement_question)
             return "answer"
 
     use_case = DummyUseCase()
-    tool = create_search_tool(use_case)
+    tool = RAGSearchTool(use_case)
 
-    result = tool("hello")
+    result = tool("hello", "enhanced")
 
     assert result == "answer"
-    assert use_case.called == "hello"
+    assert use_case.called == ("hello", "enhanced")

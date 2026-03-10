@@ -85,8 +85,8 @@ D:/rag_system_azure/.venv/Scripts/python.exe -m pytest tests/unit
 D:/rag_system_azure/.venv/Scripts/python.exe -m pytest tests/integration
 ```
 
-Current test count: 74
-- Unit tests: 67
+Current test count: 72
+- Unit tests: 65
 - Integration tests: 7
 
 ## Notes
