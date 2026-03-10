@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 from dotenv import load_dotenv
 from openai import AzureOpenAI
