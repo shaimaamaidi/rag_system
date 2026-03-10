@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 RELEVANT_LEVELS = {"VERY HIGH", "HIGH"}
-
+MEDIUM_LEVEL = "MEDIUM"
 
 class ChunkRelevanceClassifier(ChunkRelevanceClassifierPort):
     """Classify retrieved chunks by relevance using Azure OpenAI."""
@@ -103,6 +103,18 @@ class ChunkRelevanceClassifier(ChunkRelevanceClassifierPort):
                 for i, chunk in enumerate(chunks)
                 if classification_map.get(i + 1) in RELEVANT_LEVELS
             ]
+
+            if not relevant_chunks:
+                logger.info("No VERY HIGH/HIGH chunks found — falling back to MEDIUM")
+                relevant_chunks = [
+                    chunk
+                    for i, chunk in enumerate(chunks)
+                    if classification_map.get(i + 1) == MEDIUM_LEVEL
+                ]
+
+                if not relevant_chunks:
+                    logger.info("No MEDIUM chunks found — returning all %d chunks as fallback", len(chunks))
+                    relevant_chunks = chunks
 
             logger.info(
                 "%d / %d chunks kept after classification (VERY HIGH + HIGH)",
