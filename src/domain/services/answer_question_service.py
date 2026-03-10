@@ -34,6 +34,7 @@ class AnswerQuestionService(AskQuestionPort):
 
         :param embedding_model: Component to generate embeddings for questions.
         :param vector_store: Component to search for relevant chunks.
+        :param chunk_classifier: Component to classify chunk relevance.
         """
         self.embedding = embedding_model
         self.vector_store = vector_store

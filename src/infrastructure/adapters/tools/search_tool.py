@@ -23,6 +23,7 @@ class RAGSearchTool(SearchToolPort):
         """Execute the search tool.
 
         :param question: Question to answer.
+        :param enhancement_question: Enhanced question used for retrieval.
         :return: Answer generated from retrieved documents.
         """
         logger.info("RAG tool received question: %s", question)
